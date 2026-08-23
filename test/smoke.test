@@ -1,0 +1,9 @@
+## Very basic smoke test that checks the CLI argument parsing.
+## SPDX-License-Identifier: GPL-3.0-or-later
+
+# DEFINE: %{check-exit} = %python -c "import subprocess,sys;sys.exit(subprocess.run(sys.argv[2:]).returncode != int(sys.argv[1]))"
+# RUN: %{check-exit} 0 %loonglint --help
+# RUN: %{check-exit} 0 %loonglint --version
+# RUN: %{check-exit} 0 %loonglint --list-checks
+# RUN: %{check-exit} 2 %loonglint
+# RUN: %{check-exit} 2 %loonglint --definitely-not-an-option

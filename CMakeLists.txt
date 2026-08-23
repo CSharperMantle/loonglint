@@ -10,6 +10,8 @@ if(NOT "LoongArch" IN_LIST LLVM_TARGETS_TO_BUILD)
 endif()
 
 set(LLVM_SUBPROJECT_TITLE "loonglint")
+set(LOONGLINT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(LOONGLINT_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 set(LLVM_LINK_COMPONENTS
   Support
@@ -36,3 +38,7 @@ target_include_directories(loonglint SYSTEM PRIVATE
 )
 
 add_dependencies(loonglint LoongArchCommonTableGen)
+
+if(LLVM_INCLUDE_TESTS)
+  add_subdirectory(test)
+endif()
