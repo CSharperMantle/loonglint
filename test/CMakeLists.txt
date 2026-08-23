@@ -16,5 +16,10 @@ configure_lit_site_cfg(
 add_lit_testsuite(check-loonglint "Running loonglint regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
   DEPENDS
+  FileCheck
+  llvm-mc
+  llvm-objcopy
+  not
+  yaml2obj
   loonglint
 )

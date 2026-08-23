@@ -14,11 +14,19 @@ set(LOONGLINT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LOONGLINT_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 set(LLVM_LINK_COMPONENTS
+  LoongArchDesc
+  LoongArchDisassembler
+  LoongArchInfo
+  MC
+  MCDisassembler
+  Object
   Support
+  TargetParser
 )
 
 add_llvm_tool(loonglint
   DISABLE_PCH_REUSE
+  src/Decoder.cpp
   src/main.cpp
 )
 

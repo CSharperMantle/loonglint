@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
-        "loonglint"
+        "loonglint",
+        "disasm",
+        "MSTI",
     ],
     "files.associations": {
       "*.py.in": "python"
