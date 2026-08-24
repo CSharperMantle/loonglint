@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef LOONGLINT_REGIONSCAN_HPP
-#define LOONGLINT_REGIONSCAN_HPP
+#ifndef LOONGLINT_SCANNEDREGION_HPP
+#define LOONGLINT_SCANNEDREGION_HPP
 
 #include "loonglint/DisassemblerTarget.hpp"
 #include "loonglint/Rules.hpp"

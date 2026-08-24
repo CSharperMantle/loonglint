@@ -29,7 +29,7 @@ add_llvm_tool(loonglint
   DISABLE_PCH_REUSE
   src/DisassemblerTarget.cpp
   src/main.cpp
-  src/RegionScan.cpp
+  src/ScannedRegion.cpp
   src/Rules.cpp
 )
 

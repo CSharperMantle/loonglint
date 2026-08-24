@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "loonglint/DisassemblerTarget.hpp"
-#include "loonglint/RegionScan.hpp"
 #include "loonglint/Rules.hpp"
+#include "loonglint/ScannedRegion.hpp"
 
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"

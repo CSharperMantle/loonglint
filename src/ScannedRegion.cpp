@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "loonglint/RegionScan.hpp"
+#include "loonglint/ScannedRegion.hpp"
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/MC/MCInst.h"
