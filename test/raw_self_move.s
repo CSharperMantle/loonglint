@@ -9,8 +9,8 @@
 # RUN: llvm-objcopy -O binary --only-section=.text %t.64.o %t.64.bin
 # RUN: not loonglint --input-format=raw --arch=loongarch64 %t.64.bin | FileCheck %s
 
-# CHECK: {{.*}}.bin:raw:0x0: integer/self-move: delete redundant self-move
-# CHECK-NEXT: {{.*}}.bin:raw:0x4: integer/self-move: delete redundant self-move
+# CHECK: {{.*}}.bin:<raw>:0x0: integer/self-move: delete redundant self-move
+# CHECK-NEXT: {{.*}}.bin:<raw>:0x4: integer/self-move: delete redundant self-move
 # CHECK-NEXT: findings: 2; skipped words: 0; trailing bytes: 0
 
 .text

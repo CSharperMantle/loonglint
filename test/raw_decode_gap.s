@@ -7,7 +7,7 @@
 # RUN: loonglint -v --base-address=0x1000 --input-format=raw --arch=loongarch64 %t.bin 2>&1 | FileCheck %s --check-prefix=VERBOSE
 
 # SUMMARY: findings: 0; skipped words: 1; trailing bytes: 0
-# VERBOSE: loonglint: warning: {{.*}}.bin:raw: skipped undecodable words in [0x1004, 0x1008)
+# VERBOSE: loonglint: warning: {{.*}}.bin:<raw>: skipped undecodable words in [0x1004, 0x1008)
 
 .text
 addi.w $r4, $r4, 1

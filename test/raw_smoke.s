@@ -8,8 +8,11 @@
 # RUN: llvm-mc -triple=loongarch64 -filetype=obj %s -o %t.64.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.64.o %t.64.bin
 # RUN: loonglint --input-format=raw --arch=loongarch64 %t.64.bin | FileCheck %s
+# RUN: loonglint --arch=loongarch64 %t.64.bin | FileCheck %s
+# RUN: not loonglint --color=false %t.64.bin 2>&1 | FileCheck %s --check-prefix=AUTO-NO-ARCH
 
 # CHECK: findings: 0; skipped words: 0; trailing bytes: 0
+# AUTO-NO-ARCH: loonglint: error: --arch is required for raw input
 
 .text
 addi.w $r4, $r4, 1

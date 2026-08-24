@@ -14,6 +14,7 @@ set(LOONGLINT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LOONGLINT_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 set(LLVM_LINK_COMPONENTS
+  BinaryFormat
   LoongArchDesc
   LoongArchDisassembler
   LoongArchInfo

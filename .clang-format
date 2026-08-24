@@ -6,5 +6,5 @@ TabWidth: 4
 InsertNewlineAtEOF: true
 AlignConsecutiveShortCaseStatements:
   Enabled: true
-AllowShortCaseLabelsOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty

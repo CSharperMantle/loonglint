@@ -7,7 +7,7 @@
 # RUN: loonglint -v --input-format=raw --arch=loongarch64 %t.bin 2>&1 | FileCheck %s --check-prefix=VERBOSE
 
 # SUMMARY: findings: 0; skipped words: 0; trailing bytes: 3
-# VERBOSE: loonglint: warning: {{.*}}.bin:raw: ignored 3 trailing bytes at 0x4
+# VERBOSE: loonglint: warning: {{.*}}.bin:<raw>: ignored 3 trailing bytes at 0x4
 
 .text
 addi.w $r4, $r4, 1

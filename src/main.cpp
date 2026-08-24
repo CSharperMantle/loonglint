@@ -8,6 +8,7 @@
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
+#include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Config/llvm-config.h"
 #include "llvm/MC/MCInstPrinter.h"
 #include "llvm/Object/ELFObjectFile.h"
@@ -36,16 +37,17 @@ enum class ArchitectureOption { Unspecified, LoongArch32, LoongArch64 };
 
 namespace opts {
 
-cl::OptionCategory LoongLintCategory("loonglint options");
+cl::OptionCategory LoongLintCategory("LoongLint Options");
 
 cl::opt<std::string> InputFile(cl::Positional, cl::desc("<input file>"),
                                cl::cat(LoongLintCategory));
-cl::opt<InputFormat>
-    InputFormat("input-format", cl::desc("Input format"), cl::init(InputFormat::Auto),
-                cl::values(clEnumValN(InputFormat::Auto, "auto", "Recognize ELF input"),
-                           clEnumValN(InputFormat::Elf, "elf", "Require ELF input"),
-                           clEnumValN(InputFormat::Raw, "raw", "Treat input as raw code")),
-                cl::cat(LoongLintCategory));
+cl::opt<InputFormat> InputFormat("input-format", cl::desc("Input format"),
+                                 cl::init(InputFormat::Auto),
+                                 cl::values(clEnumValN(InputFormat::Auto, "auto",
+                                                       "Automatically detect file format"),
+                                            clEnumValN(InputFormat::Elf, "elf", "ELF object"),
+                                            clEnumValN(InputFormat::Raw, "raw", "Raw binary")),
+                                 cl::cat(LoongLintCategory));
 cl::opt<ArchitectureOption>
     Arch("arch", cl::desc("Architecture for raw input"), cl::init(ArchitectureOption::Unspecified),
          cl::values(clEnumValN(ArchitectureOption::LoongArch64, "loongarch64", "LoongArch64"),
@@ -104,7 +106,7 @@ static bool validateOptions() {
             printError("--arch is required with --input-format=raw");
             return false;
         }
-    } else {
+    } else if (opts::InputFormat == InputFormat::Elf) {
         if (opts::Arch.getNumOccurrences() != 0) {
             printError("--arch is valid only with --input-format=raw");
             return false;
@@ -191,8 +193,9 @@ static Error finish(const Totals &Total) {
 }
 
 static Expected<Totals> lintRaw(MemoryBufferRef Buffer) {
+    if (opts::Arch == ArchitectureOption::Unspecified)
+        return createStringError("--arch is required for raw input");
 
-    assert(opts::Arch != ArchitectureOption::Unspecified && "raw architecture was not validated");
     const Architecture TheArchitecture = opts::Arch == ArchitectureOption::LoongArch32
                                              ? Architecture::LoongArch32
                                              : Architecture::LoongArch64;
@@ -201,7 +204,7 @@ static Expected<Totals> lintRaw(MemoryBufferRef Buffer) {
     if (auto E = Target.takeError())
         return E;
 
-    return lintRegion(*Target, "<unnamed>", arrayRefFromStringRef(Buffer.getBuffer()),
+    return lintRegion(*Target, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
                       opts::BaseAddress);
 }
 
@@ -272,8 +275,25 @@ static Expected<Totals> lintInput() {
     if ((*Buffer)->getBufferSize() == 0)
         return createStringError("input '%s' is empty", opts::InputFile.c_str());
 
-    MemoryBufferRef Ref = (*Buffer)->getMemBufferRef();
-    return opts::InputFormat == InputFormat::Raw ? lintRaw(Ref) : lintELF(Ref);
+    const MemoryBufferRef Ref = (*Buffer)->getMemBufferRef();
+
+    switch (opts::InputFormat.getValue()) {
+    case InputFormat::Auto:
+        switch (identify_magic((*Buffer)->getBuffer())) {
+        case file_magic::elf:
+        case file_magic::elf_relocatable:
+        case file_magic::elf_executable:
+        case file_magic::elf_shared_object:
+        case file_magic::elf_core:
+            return lintELF(Ref);
+        default:
+            return lintRaw(Ref);
+        }
+    case InputFormat::Elf:
+        return lintELF(Ref);
+    case InputFormat::Raw:
+        return lintRaw(Ref);
+    }
 }
 
 int main(int argc, char **argv) {
