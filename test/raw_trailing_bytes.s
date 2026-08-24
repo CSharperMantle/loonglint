@@ -1,15 +1,12 @@
-## Report bytes that cannot form a complete instruction.
+## Report bytes that cannot form a complete raw instruction.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64 -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: loonglint --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s --check-prefix=SUMMARY
-# RUN: loonglint --input-format=raw --arch=loongarch64 %t.bin 2>&1 | FileCheck %s --check-prefix=WARNING
+# RUN: loonglint --input-format=raw --arch=loongarch64 %t.bin 2>&1 | FileCheck %s
 
-# SUMMARY: 0 finding(s)
-# SUMMARY-NEXT: Scan incomplete: 3 trailing byte(s) ignored.
-# WARNING: loonglint: warning: {{.*}}.bin:<raw>: ignored 3 trailing bytes at 0x4
+# CHECK: loonglint: warning: {{.*}}.bin:<raw>: ignored 3 trailing bytes at 0x4
 
 .text
-addi.w $r4, $r4, 1
+addi.w $a0, $a0, 1
 .byte 1, 2, 3

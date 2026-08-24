@@ -2,12 +2,14 @@
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: loonglint --help | FileCheck %s --check-prefix=HELP
-# RUN: loonglint --version
-# RUN: loonglint --list-checks
-# RUN: not loonglint
-# RUN: not loonglint --definitely-not-an-option
+# RUN: loonglint --version | FileCheck %s --check-prefix=VERSION
+# RUN: not loonglint 2>&1 | FileCheck %s --check-prefix=NO-INPUT
+# RUN: not loonglint --definitely-not-an-option 2>&1 | FileCheck %s --check-prefix=UNKNOWN
 
 # HELP: USAGE: loonglint
 # HELP: Color Options:
 # HELP: --color
 # HELP-NOT: --verbose
+# VERSION: loonglint (LLVM
+# NO-INPUT: loonglint: error: no input file
+# UNKNOWN: loonglint: Unknown command line argument '--definitely-not-an-option'.

@@ -2,7 +2,7 @@
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: yaml2obj %s -o %t
-# RUN: not loonglint --color=false %t 2>&1 | FileCheck %s
+# RUN: not loonglint %t 2>&1 | FileCheck %s
 
 # CHECK: loonglint: error: no non-empty executable sections in '{{.*}}'
 

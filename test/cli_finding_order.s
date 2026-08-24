@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64 -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: not loonglint --color=false --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s
+# RUN: not loonglint --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s
 
 # CHECK: {{.*}}.bin:<raw>:0x0: delete branch to next instruction [control/branch-to-next]
 # CHECK-NEXT:   - 0x00000000  b 4
@@ -19,4 +19,4 @@
 .text
 b 1f
 1:
-or $r4, $r4, $r0
+or $a0, $a0, $zero

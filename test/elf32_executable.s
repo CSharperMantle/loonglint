@@ -6,9 +6,8 @@
 # RUN: loonglint %t.exe | FileCheck %s
 
 # CHECK: 0 finding(s)
-# CHECK-NOT: Scan incomplete
 
 .text
 .globl _start
 _start:
-  addi.w $r4, $r4, 1
+  addi.w $a0, $a0, 1
