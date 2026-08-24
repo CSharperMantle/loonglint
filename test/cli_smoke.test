@@ -1,8 +1,11 @@
 ## Very basic smoke test that checks CLI success and failure.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
-# RUN: loonglint --help
+# RUN: loonglint --help | FileCheck %s --check-prefix=HELP
 # RUN: loonglint --version
 # RUN: loonglint --list-checks
 # RUN: not loonglint
 # RUN: not loonglint --definitely-not-an-option
+
+# HELP: USAGE: loonglint
+# HELP-NOT: --verbose

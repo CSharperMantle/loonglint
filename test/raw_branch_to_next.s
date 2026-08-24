@@ -5,8 +5,12 @@
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
 # RUN: not loonglint --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s
 
-# CHECK: {{.*}}.bin:<raw>:0x0: control/branch-to-next: delete branch to next instruction
-# CHECK-NEXT: {{.*}}.bin:<raw>:0x4: control/branch-to-next: delete branch to next instruction
+# CHECK: {{.*}}.bin:<raw>:0x0: delete branch to next instruction [control/branch-to-next]
+# CHECK-NEXT:   - 0x00000000  b 4
+# CHECK-EMPTY:
+# CHECK-NEXT: {{.*}}.bin:<raw>:0x4: delete branch to next instruction [control/branch-to-next]
+# CHECK-NEXT:   - 0x00000004  beq $a0, $a1, 4
+# CHECK-EMPTY:
 # CHECK-NEXT: findings: 2; skipped words: 0; trailing bytes: 0
 
 .text

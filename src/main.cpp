@@ -5,6 +5,7 @@
 #include "loonglint/Rules.hpp"
 
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -57,9 +58,6 @@ cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw inp
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
 cl::opt<bool> ListChecks("list-checks", cl::desc("List available checks"),
                          cl::cat(LoongLintCategory));
-cl::opt<bool> Verbose("verbose", cl::desc("Show verbose findings"), cl::cat(LoongLintCategory));
-cl::alias VerboseShort("v", cl::NotHidden, cl::desc("Alias for --verbose"), cl::aliasopt(Verbose),
-                       cl::cat(LoongLintCategory));
 
 } // namespace opts
 
@@ -119,39 +117,33 @@ static bool validateOptions() {
     return true;
 }
 
+static void printInstruction(DisassemblerTarget &Target, char Marker, uint64_t Address,
+                             const MCInst &Inst) {
+    SmallString<64> Text;
+    raw_svector_ostream TextStream(Text);
+    Target.printInst(Inst, Address, TextStream);
+    outs() << "  " << Marker << ' ' << format_hex(Address, 10) << "  " << StringRef(Text).trim()
+           << '\n';
+}
+
 static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
                          const Finding &TheFinding) {
     const uint64_t Address = TheFinding.Instructions.front().Address;
     outs() << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
-           << TheFinding.MatchedRule.Id << ": " << TheFinding.MatchedRule.Description << '\n';
+           << TheFinding.MatchedRule.Description << " [" << TheFinding.MatchedRule.Id << "]\n";
 
-    if (!opts::Verbose)
-        return;
-
-    for (const auto &I : TheFinding.Instructions) {
-        outs() << "  original: ";
-        Target.printInst(I.Inst, I.Address, outs());
-        outs() << '\n';
-    }
-
-    if (TheFinding.Match.Replacement.empty()) {
-        outs() << "  suggested: <delete>\n";
-        return;
-    }
+    for (const auto &I : TheFinding.Instructions)
+        printInstruction(Target, '-', I.Address, I.Inst);
 
     uint64_t ReplacementAddress = Address;
     for (const auto &MI : TheFinding.Match.Replacement) {
-        outs() << "  suggested: ";
-        Target.printInst(MI, ReplacementAddress, outs());
-        outs() << '\n';
+        printInstruction(Target, '+', ReplacementAddress, MI);
         ReplacementAddress += 4;
     }
+    outs() << '\n';
 }
 
 static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Region) {
-    if (!opts::Verbose)
-        return;
-
     Region.forEachGap([&](uint64_t Begin, uint64_t End) {
         WithColor::warning(errs(), "loonglint")
             << opts::InputFile << ':' << RegionName << ": skipped undecodable words in ["
