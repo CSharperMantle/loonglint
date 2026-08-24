@@ -1,6 +1,22 @@
 # LoongLint
 
+LoongLint (also stylized as "loonglint" and "LOONGLINT" in the source code) checks [LoongArch](https://docs.kernel.org/arch/loongarch/introduction.html) binaries for common optimizable peephole patterns.
+
 WIP.
+
+## Installation
+
+### From source
+
+Get a modern C++ toolchain that supports C++20. If your compiler can build modern LLVM, it's likely usable here as well.
+
+Set the variable `LLVM_PROJECT` to a source clone of <https://github.com/llvm/llvm-project/>. At the time of writing, the developing LLVM version is 24.0.0. LoongLint should also compile with not-too-older trees, like LLVM 23 and 22.
+
+```sh
+cd loonglint
+cmake -S "$LLVM_PROJECT"/llvm -B build -G Ninja -DLLVM_EXTERNAL_PROJECTS='loonglint' -DLLVM_EXTERNAL_LOONGLINT_SOURCE_DIR="$(pwd)" -DLLVM_TARGETS_TO_BUILD='LoongArch' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+ninja -C build
+```
 
 ## License
 
