@@ -2,11 +2,11 @@
 
 if(NOT DEFINED LLVM_MAIN_SRC_DIR OR NOT COMMAND add_llvm_tool)
   message(FATAL_ERROR
-    "loonglint must be built through LLVM_EXTERNAL_PROJECTS against an LLVM source tree")
+    "LoongLint must be built through LLVM_EXTERNAL_PROJECTS against an LLVM source tree")
 endif()
 
 if(NOT "LoongArch" IN_LIST LLVM_TARGETS_TO_BUILD)
-  message(FATAL_ERROR "loonglint requires LoongArch in LLVM_TARGETS_TO_BUILD")
+  message(FATAL_ERROR "LoongLint requires LoongArch in LLVM_TARGETS_TO_BUILD")
 endif()
 
 set(LLVM_SUBPROJECT_TITLE "loonglint")

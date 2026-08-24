@@ -1,4 +1,4 @@
-# loonglint
+# LoongLint
 
 WIP.
 
