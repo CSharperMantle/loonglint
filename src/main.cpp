@@ -155,14 +155,14 @@ static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
     outs() << '\n';
 }
 
-static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Region) {
+static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Region,
+                                const RegionSummary &Summary) {
     Region.forEachGap([&](uint64_t Begin, uint64_t End) {
         WithColor::warning(errs(), "loonglint")
             << opts::InputFile << ':' << RegionName << ": skipped undecodable words in ["
             << format_hex(Begin, 0) << ", " << format_hex(End, 0) << ")\n";
     });
 
-    const RegionSummary Summary = Region.summary();
     if (Summary.TrailingBytes)
         WithColor::warning(errs(), "loonglint")
             << opts::InputFile << ':' << RegionName << ": ignored " << Summary.TrailingBytes
@@ -175,7 +175,8 @@ static Expected<Totals> lintRegion(DisassemblerTarget &Target, StringRef Name,
     if (auto E = Region.takeError())
         return E;
 
-    printRegionWarnings(Name, *Region);
+    const RegionSummary Summary = Region->summary();
+    printRegionWarnings(Name, *Region, Summary);
 
     Expected<uint64_t> FindingCount =
         Region->runRules(rules(), [&](const Finding &F) { printFinding(Target, Name, F); });
@@ -183,7 +184,7 @@ static Expected<Totals> lintRegion(DisassemblerTarget &Target, StringRef Name,
         return E;
 
     Totals Result;
-    Result.add(Region->summary(), *FindingCount);
+    Result.add(Summary, *FindingCount);
     return Result;
 }
 
