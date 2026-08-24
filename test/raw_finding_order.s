@@ -11,7 +11,10 @@
 # CHECK-NEXT: {{.*}}.bin:<raw>:0x4: delete redundant self-move [integer/self-move]
 # CHECK-NEXT:   - 0x00000004  move $a0, $a0
 # CHECK-EMPTY:
-# CHECK-NEXT: findings: 2; skipped words: 0; trailing bytes: 0
+# CHECK-NEXT: 2 finding(s)
+# CHECK-NEXT:	integer/self-move: 1
+# CHECK-NEXT:	control/branch-to-next: 1
+# CHECK-NOT: Scan incomplete
 
 .text
 b 1f

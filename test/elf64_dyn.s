@@ -5,7 +5,8 @@
 # RUN: ld.lld -shared %t.o -o %t.so
 # RUN: loonglint %t.so | FileCheck %s
 
-# CHECK: findings: 0; skipped words: 0; trailing bytes: 0
+# CHECK: 0 finding(s)
+# CHECK-NOT: Scan incomplete
 
 .text
 .globl entry

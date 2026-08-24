@@ -4,7 +4,9 @@
 #include "loonglint/Rules.hpp"
 #include "loonglint/ScannedRegion.hpp"
 
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -25,6 +27,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 
 using namespace llvm;
@@ -65,11 +68,11 @@ using namespace loonglint;
 
 enum class FindingLineKind { Removed, Added };
 
-struct Totals {
-    uint64_t Findings = 0;
-    uint64_t DecodedInstructions = 0;
-    uint64_t SkippedWords = 0;
-    uint64_t TrailingBytes = 0;
+class StatsReport {
+  public:
+    void addRuleHit(const Rule &MatchedRule) {
+        ++RuleHits[&MatchedRule];
+    }
 
     void add(const RegionSummary &Summary, uint64_t RegionFindings) {
         Findings += RegionFindings;
@@ -78,12 +81,52 @@ struct Totals {
         TrailingBytes += Summary.TrailingBytes;
     }
 
-    void add(const Totals &Other) {
+    void add(const StatsReport &Other) {
         Findings += Other.Findings;
         DecodedInstructions += Other.DecodedInstructions;
         SkippedWords += Other.SkippedWords;
         TrailingBytes += Other.TrailingBytes;
+        for (const auto &[MatchedRule, Hits] : Other.RuleHits)
+            RuleHits[MatchedRule] += Hits;
     }
+
+    bool hasFindings() const {
+        return Findings != 0;
+    }
+
+    void report(raw_ostream &Output) const {
+        SmallVector<std::tuple<const Rule *, uint64_t>, 0> RankedRuleHits;
+        RankedRuleHits.reserve(RuleHits.size());
+        for (const auto &R : rules())
+            if (const uint64_t Hits = RuleHits.lookup(&R))
+                RankedRuleHits.emplace_back(&R, Hits);
+
+        stable_sort(RankedRuleHits, [](const auto &LHS, const auto &RHS) {
+            return std::get<1>(LHS) > std::get<1>(RHS);
+        });
+
+        Output << Findings << " finding(s)\n";
+        for (const auto &[R, Hits] : RankedRuleHits)
+            Output << '\t' << R->Id << ": " << Hits << '\n';
+
+        if (SkippedWords || TrailingBytes) {
+            Output << "Scan incomplete:";
+            if (SkippedWords)
+                Output << ' ' << SkippedWords << " undecodable word(s) skipped";
+            if (SkippedWords && TrailingBytes)
+                Output << ';';
+            if (TrailingBytes)
+                Output << ' ' << TrailingBytes << " trailing byte(s) ignored";
+            Output << ".\n";
+        }
+    }
+
+  private:
+    uint64_t Findings = 0;
+    uint64_t DecodedInstructions = 0;
+    uint64_t SkippedWords = 0;
+    uint64_t TrailingBytes = 0;
+    DenseMap<const Rule *, uint64_t> RuleHits;
 };
 
 static void printVersion(raw_ostream &Output) {
@@ -169,8 +212,8 @@ static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Regio
             << " trailing bytes at " << format_hex(Summary.TrailingAddress, 0) << '\n';
 }
 
-static Expected<Totals> lintRegion(DisassemblerTarget &Target, StringRef Name,
-                                   ArrayRef<uint8_t> Bytes, uint64_t Address) {
+static Expected<StatsReport> lintRegion(DisassemblerTarget &Target, StringRef Name,
+                                        ArrayRef<uint8_t> Bytes, uint64_t Address) {
     Expected<ScannedRegion> Region = ScannedRegion::create(Target, Bytes, Address);
     if (auto E = Region.takeError())
         return E;
@@ -178,26 +221,20 @@ static Expected<Totals> lintRegion(DisassemblerTarget &Target, StringRef Name,
     const RegionSummary Summary = Region->summary();
     printRegionWarnings(Name, *Region, Summary);
 
-    Expected<uint64_t> FindingCount =
-        Region->runRules(rules(), [&](const Finding &F) { printFinding(Target, Name, F); });
+    const ArrayRef<Rule> Rules = rules();
+    StatsReport SR;
+    Expected<uint64_t> FindingCount = Region->runRules(Rules, [&](const Finding &F) {
+        printFinding(Target, Name, F);
+        SR.addRuleHit(F.MatchedRule);
+    });
     if (auto E = FindingCount.takeError())
         return E;
 
-    Totals Result;
-    Result.add(Summary, *FindingCount);
-    return Result;
+    SR.add(Summary, *FindingCount);
+    return SR;
 }
 
-static Error finish(const Totals &Total) {
-    if (Total.DecodedInstructions == 0)
-        return createStringError("no instructions decoded from '%s'", opts::InputFile.c_str());
-
-    outs() << "findings: " << Total.Findings << "; skipped words: " << Total.SkippedWords
-           << "; trailing bytes: " << Total.TrailingBytes << '\n';
-    return Error::success();
-}
-
-static Expected<Totals> lintRaw(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
     if (opts::Arch == ArchitectureOption::Unspecified)
         return createStringError("--arch is required for raw input");
 
@@ -213,7 +250,7 @@ static Expected<Totals> lintRaw(MemoryBufferRef Buffer) {
                       opts::BaseAddress);
 }
 
-static Expected<Totals> lintELF(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
     Expected<std::unique_ptr<object::ObjectFile>> Object =
         object::ObjectFile::createObjectFile(Buffer);
     if (auto E = Object.takeError())
@@ -240,7 +277,7 @@ static Expected<Totals> lintELF(MemoryBufferRef Buffer) {
 
     Target->setABIVersion(TheELF->getEIdentABIVersion());
 
-    Totals Total;
+    StatsReport SR;
     bool HasCode = false;
     for (const auto &Section : Object->get()->sections()) {
         if (!Section.isText() || Section.getSize() == 0)
@@ -256,22 +293,22 @@ static Expected<Totals> lintELF(MemoryBufferRef Buffer) {
             continue;
 
         HasCode = true;
-        Expected<Totals> RegionTotal =
+        Expected<StatsReport> RegionSR =
             lintRegion(*Target, Name->empty() ? "<unnamed>" : *Name,
                        arrayRefFromStringRef(*Contents), Section.getAddress());
-        if (auto E = RegionTotal.takeError())
+        if (auto E = RegionSR.takeError())
             return E;
 
-        Total.add(*RegionTotal);
+        SR.add(*RegionSR);
     }
 
     if (!HasCode)
         return createStringError("no non-empty executable sections in '%s'",
                                  opts::InputFile.c_str());
-    return Total;
+    return SR;
 }
 
-static Expected<Totals> lintInput() {
+static Expected<StatsReport> lintInput() {
     ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer =
         MemoryBuffer::getFile(opts::InputFile, /*IsText=*/false,
                               /*RequiresNullTerminator=*/false);
@@ -321,14 +358,11 @@ int main(int argc, char **argv) {
     LLVMInitializeLoongArchTargetMC();
     LLVMInitializeLoongArchDisassembler();
 
-    Expected<Totals> Total = lintInput();
-    if (auto E = Total.takeError()) {
+    Expected<StatsReport> SR = lintInput();
+    if (auto E = SR.takeError()) {
         printError(toString(std::move(E)));
         return 2;
     }
-    if (Error FinishError = finish(*Total)) {
-        printError(toString(std::move(FinishError)));
-        return 2;
-    }
-    return Total->Findings == 0 ? 0 : 1;
+    SR->report(outs());
+    return SR->hasFindings() ? 1 : 0;
 }

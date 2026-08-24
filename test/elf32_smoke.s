@@ -5,7 +5,8 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: loonglint %t.exe | FileCheck %s
 
-# CHECK: findings: 0; skipped words: 0; trailing bytes: 0
+# CHECK: 0 finding(s)
+# CHECK-NOT: Scan incomplete
 
 .text
 .globl _start

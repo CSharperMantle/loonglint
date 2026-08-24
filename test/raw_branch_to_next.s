@@ -11,7 +11,10 @@
 # CHECK-NEXT: {{.*}}.bin:<raw>:0x4: delete branch to next instruction [control/branch-to-next]
 # CHECK-NEXT:   - 0x00000004  beq $a0, $a1, 4
 # CHECK-EMPTY:
-# CHECK-NEXT: findings: 2; skipped words: 0; trailing bytes: 0
+# CHECK-NEXT: 2 finding(s)
+# CHECK-NEXT:	control/branch-to-next: 2
+# CHECK-NOT: integer/self-move
+# CHECK-NOT: Scan incomplete
 
 .text
 b 1f

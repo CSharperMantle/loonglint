@@ -6,7 +6,8 @@
 # RUN: loonglint --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s --check-prefix=SUMMARY
 # RUN: loonglint --input-format=raw --arch=loongarch64 %t.bin 2>&1 | FileCheck %s --check-prefix=WARNING
 
-# SUMMARY: findings: 0; skipped words: 0; trailing bytes: 3
+# SUMMARY: 0 finding(s)
+# SUMMARY-NEXT: Scan incomplete: 3 trailing byte(s) ignored.
 # WARNING: loonglint: warning: {{.*}}.bin:<raw>: ignored 3 trailing bytes at 0x4
 
 .text

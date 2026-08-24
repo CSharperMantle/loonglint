@@ -8,7 +8,9 @@
 # CHECK: {{.*}}.exe:.text:0x10000: delete redundant self-move [integer/self-move]
 # CHECK-NEXT:   - 0x00010000  move $a0, $a0
 # CHECK-EMPTY:
-# CHECK-NEXT: findings: 1; skipped words: 0; trailing bytes: 0
+# CHECK-NEXT: 1 finding(s)
+# CHECK-NEXT:	integer/self-move: 1
+# CHECK-NOT: Scan incomplete
 
 .text
 .globl _start
