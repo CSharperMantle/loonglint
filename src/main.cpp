@@ -149,12 +149,9 @@ static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
 
     for (const auto &I : TheFinding.Instructions)
         printInstruction(Target, FindingLineKind::Removed, I.Address, I.Inst);
+    for (const auto &[II, MI] : enumerate(TheFinding.Match.Replacement))
+        printInstruction(Target, FindingLineKind::Added, Address + 4 * II, MI);
 
-    uint64_t ReplacementAddress = Address;
-    for (const auto &MI : TheFinding.Match.Replacement) {
-        printInstruction(Target, FindingLineKind::Added, ReplacementAddress, MI);
-        ReplacementAddress += 4;
-    }
     outs() << '\n';
 }
 
