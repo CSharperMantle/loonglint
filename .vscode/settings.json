@@ -5,6 +5,8 @@
         "MSTI",
     ],
     "files.associations": {
-      "*.py.in": "python"
+      "*.py.in": "python",
+      ".clang-tidy": "yaml",
+      ".clang-format": "yaml",
     }
 }

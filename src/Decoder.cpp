@@ -56,7 +56,7 @@ Expected<Decoder::Result> Decoder::decode(ArrayRef<uint8_t> Bytes, uint64_t Addr
     const size_t FullSize = Bytes.size() - Bytes.size() % 4;
     std::optional<uint64_t> GapStart;
 
-    auto finishGap = [&](uint64_t End) {
+    const auto FinishGap = [&](uint64_t End) {
         if (GapStart)
             R.Gaps.push_back({*GapStart, End});
         GapStart.reset();
@@ -70,7 +70,7 @@ Expected<Decoder::Result> Decoder::decode(ArrayRef<uint8_t> Bytes, uint64_t Addr
                                        InstructionAddress, nulls())) {
         case MCDisassembler::Success:
             assert(Size == 4 && "non-4B LoongArch instructions are peculiar!");
-            finishGap(InstructionAddress);
+            FinishGap(InstructionAddress);
             ++R.DecodedInstructions;
             break;
         default:
@@ -81,7 +81,7 @@ Expected<Decoder::Result> Decoder::decode(ArrayRef<uint8_t> Bytes, uint64_t Addr
         }
     }
 
-    finishGap(Address + FullSize);
+    FinishGap(Address + FullSize);
     R.TrailingBytes = Bytes.size() - FullSize;
     return R;
 }

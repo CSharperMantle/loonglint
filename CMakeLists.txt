@@ -47,6 +47,11 @@ target_include_directories(loonglint SYSTEM PRIVATE
 
 add_dependencies(loonglint LoongArchCommonTableGen)
 
+find_program(LOONGLINT_CLANG_TIDY NAMES clang-tidy REQUIRED)
+set_property(TARGET loonglint PROPERTY
+  CXX_CLANG_TIDY "${LOONGLINT_CLANG_TIDY}"
+)
+
 if(LLVM_INCLUDE_TESTS)
   add_subdirectory(test)
 endif()
