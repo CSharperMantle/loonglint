@@ -96,13 +96,13 @@ void ScannedRegion::forEachGap(GapHandler HandleGap) const {
 
 Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
                                            FindingHandler HandleFinding) const {
-    const unsigned MaximumInstructionCount = maxInstCount(Rules);
-
     if (Rules.empty())
         return 0;
 
+    const unsigned MaxInstCount = maxInstCount(Rules);
+
     SmallVector<Instruction> Window;
-    Window.reserve(MaximumInstructionCount);
+    Window.reserve(MaxInstCount);
 
     uint64_t FindingCount = 0;
     size_t NextWord = 0;
@@ -113,7 +113,7 @@ Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
             continue;
         }
 
-        while (Window.size() < MaximumInstructionCount && NextWord < WordCount) {
+        while (Window.size() < MaxInstCount && NextWord < WordCount) {
             const unsigned NextBit = static_cast<unsigned>(NextWord);
             if (OpaqueWords.test(NextBit) || (!Window.empty() && Boundaries.test(NextBit)))
                 break;
