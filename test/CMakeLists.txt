@@ -13,10 +13,18 @@ configure_lit_site_cfg(
   "LOONGLINT_BINARY_DIR"
 )
 
+configure_lit_site_cfg(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.site.cfg.py.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg.py
+  MAIN_CONFIG
+  ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.cfg.py
+)
+
 add_lit_testsuite(check-loonglint "Running loonglint regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
   DEPENDS
   FileCheck
+  LoongLintUnitTests
   llvm-mc
   llvm-objcopy
   not

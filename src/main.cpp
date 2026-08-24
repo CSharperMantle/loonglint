@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "loonglint/Decoder.hpp"
+#include "loonglint/DisassemblerTarget.hpp"
+#include "loonglint/RegionScan.hpp"
+#include "loonglint/Rules.hpp"
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Config/llvm-config.h"
+#include "llvm/MC/MCInstPrinter.h"
 #include "llvm/Object/ELFObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
@@ -24,17 +28,17 @@
 #include <utility>
 
 using namespace llvm;
-using namespace loonglint;
-
-enum class InputFormat { Auto, Elf, Raw };
 
 namespace loonglint {
+
+enum class InputFormat { Auto, Elf, Raw };
+enum class ArchitectureOption { Unspecified, LoongArch32, LoongArch64 };
 
 namespace opts {
 
 cl::OptionCategory LoongLintCategory("loonglint options");
 
-cl::opt<std::string> InputFile(cl::Positional, cl::desc("<input file>"), cl::Optional,
+cl::opt<std::string> InputFile(cl::Positional, cl::desc("<input file>"),
                                cl::cat(LoongLintCategory));
 cl::opt<InputFormat>
     InputFormat("input-format", cl::desc("Input format"), cl::init(InputFormat::Auto),
@@ -42,12 +46,11 @@ cl::opt<InputFormat>
                            clEnumValN(InputFormat::Elf, "elf", "Require ELF input"),
                            clEnumValN(InputFormat::Raw, "raw", "Treat input as raw code")),
                 cl::cat(LoongLintCategory));
-cl::opt<Architecture>
-    Architecture("arch", cl::desc("Architecture for raw input"),
-                 cl::init(Architecture::Unspecified),
-                 cl::values(clEnumValN(Architecture::LoongArch64, "loongarch64", "LoongArch64"),
-                            clEnumValN(Architecture::LoongArch32, "loongarch32", "LoongArch32")),
-                 cl::cat(LoongLintCategory));
+cl::opt<ArchitectureOption>
+    Arch("arch", cl::desc("Architecture for raw input"), cl::init(ArchitectureOption::Unspecified),
+         cl::values(clEnumValN(ArchitectureOption::LoongArch64, "loongarch64", "LoongArch64"),
+                    clEnumValN(ArchitectureOption::LoongArch32, "loongarch32", "LoongArch32")),
+         cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
 cl::opt<bool> ListChecks("list-checks", cl::desc("List available checks"),
@@ -60,15 +63,26 @@ cl::alias VerboseShort("v", cl::NotHidden, cl::desc("Alias for --verbose"), cl::
 
 } // namespace loonglint
 
+using namespace loonglint;
+
 struct Totals {
+    uint64_t Findings = 0;
     uint64_t DecodedInstructions = 0;
     uint64_t SkippedWords = 0;
     uint64_t TrailingBytes = 0;
 
-    void add(const Decoder::Result &Result) {
-        DecodedInstructions += Result.DecodedInstructions;
-        SkippedWords += Result.SkippedWords;
-        TrailingBytes += Result.TrailingBytes;
+    void add(const RegionSummary &Summary, uint64_t RegionFindings) {
+        Findings += RegionFindings;
+        DecodedInstructions += Summary.DecodedInstructions;
+        SkippedWords += Summary.SkippedWords;
+        TrailingBytes += Summary.TrailingBytes;
+    }
+
+    void add(const Totals &Other) {
+        Findings += Other.Findings;
+        DecodedInstructions += Other.DecodedInstructions;
+        SkippedWords += Other.SkippedWords;
+        TrailingBytes += Other.TrailingBytes;
     }
 };
 
@@ -81,19 +95,17 @@ static void printError(StringRef Message) {
 }
 
 static bool validateOptions() {
-    if (opts::ListChecks)
-        return true;
-    if (opts::InputFile.empty()) {
+    if (!opts::ListChecks && opts::InputFile.empty()) {
         printError("no input file");
         return false;
     }
     if (opts::InputFormat == InputFormat::Raw) {
-        if (opts::Architecture.getNumOccurrences() == 0) {
+        if (opts::Arch.getNumOccurrences() == 0) {
             printError("--arch is required with --input-format=raw");
             return false;
         }
     } else {
-        if (opts::Architecture.getNumOccurrences() != 0) {
+        if (opts::Arch.getNumOccurrences() != 0) {
             printError("--arch is valid only with --input-format=raw");
             return false;
         }
@@ -105,52 +117,95 @@ static bool validateOptions() {
     return true;
 }
 
-static Expected<Decoder::Result> decodeRegion(Decoder &D, StringRef Name, ArrayRef<uint8_t> Bytes,
-                                              uint64_t Address) {
-    Expected<Decoder::Result> Result = D.decode(Bytes, Address);
-    if (auto E = Result.takeError())
-        return E;
+static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
+                         const Finding &TheFinding) {
+    const uint64_t Address = TheFinding.Instructions.front().Address;
+    outs() << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
+           << TheFinding.MatchedRule.Id << ": " << TheFinding.MatchedRule.Description << '\n';
 
-    if (opts::Verbose) {
-        for (const Decoder::Gap &Gap : Result->Gaps)
-            WithColor::warning(errs(), "loonglint")
-                << opts::InputFile << ':' << Name << ": skipped undecodable words in ["
-                << format_hex(Gap.Begin, 0) << ", " << format_hex(Gap.End, 0) << ")\n";
+    if (!opts::Verbose)
+        return;
 
-        if (Result->TrailingBytes)
-            WithColor::warning(errs(), "loonglint")
-                << opts::InputFile << ':' << Name << ": ignored " << Result->TrailingBytes
-                << " trailing bytes at "
-                << format_hex(Address + Bytes.size() - Result->TrailingBytes, 0) << '\n';
+    for (const auto &I : TheFinding.Instructions) {
+        outs() << "  original: ";
+        Target.printInst(I.Inst, I.Address, outs());
+        outs() << '\n';
     }
 
+    if (TheFinding.Match.Replacement.empty()) {
+        outs() << "  suggested: <delete>\n";
+        return;
+    }
+
+    uint64_t ReplacementAddress = Address;
+    for (const auto &MI : TheFinding.Match.Replacement) {
+        outs() << "  suggested: ";
+        Target.printInst(MI, ReplacementAddress, outs());
+        outs() << '\n';
+        ReplacementAddress += 4;
+    }
+}
+
+static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Region) {
+    if (!opts::Verbose)
+        return;
+
+    Region.forEachGap([&](uint64_t Begin, uint64_t End) {
+        WithColor::warning(errs(), "loonglint")
+            << opts::InputFile << ':' << RegionName << ": skipped undecodable words in ["
+            << format_hex(Begin, 0) << ", " << format_hex(End, 0) << ")\n";
+    });
+
+    const RegionSummary Summary = Region.summary();
+    if (Summary.TrailingBytes)
+        WithColor::warning(errs(), "loonglint")
+            << opts::InputFile << ':' << RegionName << ": ignored " << Summary.TrailingBytes
+            << " trailing bytes at " << format_hex(Summary.TrailingAddress, 0) << '\n';
+}
+
+static Expected<Totals> lintRegion(DisassemblerTarget &Target, StringRef Name,
+                                   ArrayRef<uint8_t> Bytes, uint64_t Address) {
+    Expected<ScannedRegion> Region = ScannedRegion::create(Target, Bytes, Address);
+    if (auto E = Region.takeError())
+        return E;
+
+    printRegionWarnings(Name, *Region);
+
+    Expected<uint64_t> FindingCount =
+        Region->runRules(rules(), [&](const Finding &F) { printFinding(Target, Name, F); });
+    if (auto E = FindingCount.takeError())
+        return E;
+
+    Totals Result;
+    Result.add(Region->summary(), *FindingCount);
     return Result;
 }
 
-static Error finish(const Totals &Totals) {
-    if (Totals.DecodedInstructions == 0)
+static Error finish(const Totals &Total) {
+    if (Total.DecodedInstructions == 0)
         return createStringError("no instructions decoded from '%s'", opts::InputFile.c_str());
-    outs() << "findings: 0; skipped words: " << Totals.SkippedWords
-           << "; trailing bytes: " << Totals.TrailingBytes << '\n';
+
+    outs() << "findings: " << Total.Findings << "; skipped words: " << Total.SkippedWords
+           << "; trailing bytes: " << Total.TrailingBytes << '\n';
     return Error::success();
 }
 
-static Error lintRaw(MemoryBufferRef Buffer) {
-    Expected<Decoder> D = Decoder::create(opts::Architecture);
-    if (auto E = D.takeError())
+static Expected<Totals> lintRaw(MemoryBufferRef Buffer) {
+
+    assert(opts::Arch != ArchitectureOption::Unspecified && "raw architecture was not validated");
+    const Architecture TheArchitecture = opts::Arch == ArchitectureOption::LoongArch32
+                                             ? Architecture::LoongArch32
+                                             : Architecture::LoongArch64;
+
+    Expected<DisassemblerTarget> Target = DisassemblerTarget::create(TheArchitecture);
+    if (auto E = Target.takeError())
         return E;
 
-    Expected<Decoder::Result> Result =
-        decodeRegion(*D, "raw", arrayRefFromStringRef(Buffer.getBuffer()), opts::BaseAddress);
-    if (auto E = Result.takeError())
-        return E;
-
-    Totals Total;
-    Total.add(*Result);
-    return finish(Total);
+    return lintRegion(*Target, "<unnamed>", arrayRefFromStringRef(Buffer.getBuffer()),
+                      opts::BaseAddress);
 }
 
-static Error lintELF(MemoryBufferRef Buffer) {
+static Expected<Totals> lintELF(MemoryBufferRef Buffer) {
     Expected<std::unique_ptr<object::ObjectFile>> Object =
         object::ObjectFile::createObjectFile(Buffer);
     if (auto E = Object.takeError())
@@ -170,12 +225,12 @@ static Error lintELF(MemoryBufferRef Buffer) {
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
 
-    Expected<Decoder> D =
-        Decoder::create(TheELF->is64Bit() ? Architecture::LoongArch64 : Architecture::LoongArch32);
-    if (auto E = D.takeError())
+    Expected<DisassemblerTarget> Target = DisassemblerTarget::create(
+        TheELF->is64Bit() ? Architecture::LoongArch64 : Architecture::LoongArch32);
+    if (auto E = Target.takeError())
         return E;
 
-    D->setABIVersion(TheELF->getEIdentABIVersion());
+    Target->setABIVersion(TheELF->getEIdentABIVersion());
 
     Totals Total;
     bool HasCode = false;
@@ -193,21 +248,22 @@ static Error lintELF(MemoryBufferRef Buffer) {
             continue;
 
         HasCode = true;
-        Expected<Decoder::Result> Result =
-            decodeRegion(*D, Name->empty() ? "<unnamed>" : *Name, arrayRefFromStringRef(*Contents),
-                         Section.getAddress());
-        if (auto E = Result.takeError())
+        Expected<Totals> RegionTotal =
+            lintRegion(*Target, Name->empty() ? "<unnamed>" : *Name,
+                       arrayRefFromStringRef(*Contents), Section.getAddress());
+        if (auto E = RegionTotal.takeError())
             return E;
-        Total.add(*Result);
+
+        Total.add(*RegionTotal);
     }
 
     if (!HasCode)
         return createStringError("no non-empty executable sections in '%s'",
                                  opts::InputFile.c_str());
-    return finish(Total);
+    return Total;
 }
 
-static Error lintInput() {
+static Expected<Totals> lintInput() {
     ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer =
         MemoryBuffer::getFile(opts::InputFile, /*IsText=*/false,
                               /*RequiresNullTerminator=*/false);
@@ -229,16 +285,25 @@ int main(int argc, char **argv) {
         return 2;
     if (!validateOptions())
         return 2;
-    if (opts::ListChecks)
+
+    if (opts::ListChecks) {
+        for (const auto &R : rules())
+            outs() << R.Id << ": " << R.Description << '\n';
         return 0;
+    }
 
     LLVMInitializeLoongArchTargetInfo();
     LLVMInitializeLoongArchTargetMC();
     LLVMInitializeLoongArchDisassembler();
 
-    if (Error Err = lintInput()) {
-        printError(toString(std::move(Err)));
+    Expected<Totals> Total = lintInput();
+    if (auto E = Total.takeError()) {
+        printError(toString(std::move(E)));
         return 2;
     }
-    return 0;
+    if (Error FinishError = finish(*Total)) {
+        printError(toString(std::move(FinishError)));
+        return 2;
+    }
+    return Total->Findings == 0 ? 0 : 1;
 }

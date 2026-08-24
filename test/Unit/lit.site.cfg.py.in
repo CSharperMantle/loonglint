@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+@LIT_SITE_CFG_IN_HEADER@
+
+config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+config.llvm_obj_root = "@LLVM_BINARY_DIR@"
+config.llvm_tools_dir = lit_config.substitute("@LLVM_TOOLS_DIR@")
+config.llvm_build_mode = lit_config.substitute("@LLVM_BUILD_MODE@")
+config.loonglint_src_root = "@LOONGLINT_SOURCE_DIR@"
+config.loonglint_obj_root = "@LOONGLINT_BINARY_DIR@"
+
+import lit.llvm
+
+lit.llvm.initialize(lit_config, config)
+lit_config.load_config(config, "@LOONGLINT_SOURCE_DIR@/test/Unit/lit.cfg.py")

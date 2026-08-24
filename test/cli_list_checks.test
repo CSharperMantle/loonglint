@@ -1,0 +1,7 @@
+## List registered checks without input.
+## SPDX-License-Identifier: GPL-3.0-or-later
+
+# RUN: loonglint --list-checks | FileCheck %s
+
+# CHECK: integer/self-move: delete redundant self-move
+# CHECK-NEXT: control/branch-to-next: delete branch to next instruction

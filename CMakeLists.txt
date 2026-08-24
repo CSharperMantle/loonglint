@@ -26,8 +26,10 @@ set(LLVM_LINK_COMPONENTS
 
 add_llvm_tool(loonglint
   DISABLE_PCH_REUSE
-  src/Decoder.cpp
+  src/DisassemblerTarget.cpp
   src/main.cpp
+  src/RegionScan.cpp
+  src/Rules.cpp
 )
 
 set_target_properties(loonglint PROPERTIES
@@ -53,5 +55,6 @@ set_property(TARGET loonglint PROPERTY
 )
 
 if(LLVM_INCLUDE_TESTS)
+  add_subdirectory(unittests)
   add_subdirectory(test)
 endif()
