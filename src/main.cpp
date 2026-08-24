@@ -5,13 +5,11 @@
 #include "loonglint/Rules.hpp"
 
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/BinaryFormat/Magic.h"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/MC/MCInstPrinter.h"
 #include "llvm/Object/ELFObjectFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
@@ -65,6 +63,8 @@ cl::opt<bool> ListChecks("list-checks", cl::desc("List available checks"),
 
 using namespace loonglint;
 
+enum class FindingLineKind { Removed, Added };
+
 struct Totals {
     uint64_t Findings = 0;
     uint64_t DecodedInstructions = 0;
@@ -117,27 +117,42 @@ static bool validateOptions() {
     return true;
 }
 
-static void printInstruction(DisassemblerTarget &Target, char Marker, uint64_t Address,
+static void printInstruction(DisassemblerTarget &Target, FindingLineKind Kind, uint64_t Address,
                              const MCInst &Inst) {
-    SmallString<64> Text;
-    raw_svector_ostream TextStream(Text);
-    Target.printInst(Inst, Address, TextStream);
-    outs() << "  " << Marker << ' ' << format_hex(Address, 10) << "  " << StringRef(Text).trim()
-           << '\n';
+    switch (Kind) {
+    case FindingLineKind::Removed: {
+        WithColor LineColor(outs(), raw_ostream::RED);
+        Target.setUseColor(LineColor.colorsEnabled());
+        LineColor << "  - " << format_hex(Address, 10);
+        Target.printInst(Inst, Address, LineColor);
+        break;
+    }
+    case FindingLineKind::Added: {
+        WithColor LineColor(outs(), raw_ostream::GREEN);
+        Target.setUseColor(LineColor.colorsEnabled());
+        LineColor << "  + " << format_hex(Address, 10);
+        Target.printInst(Inst, Address, LineColor);
+        break;
+    }
+    }
+    outs() << '\n';
 }
 
 static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
                          const Finding &TheFinding) {
     const uint64_t Address = TheFinding.Instructions.front().Address;
-    outs() << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
-           << TheFinding.MatchedRule.Description << " [" << TheFinding.MatchedRule.Id << "]\n";
+    WithColor(outs(), raw_ostream::WHITE)
+        << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
+        << TheFinding.MatchedRule.Description << ' ';
+    WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.Id << ']';
+    outs() << '\n';
 
     for (const auto &I : TheFinding.Instructions)
-        printInstruction(Target, '-', I.Address, I.Inst);
+        printInstruction(Target, FindingLineKind::Removed, I.Address, I.Inst);
 
     uint64_t ReplacementAddress = Address;
     for (const auto &MI : TheFinding.Match.Replacement) {
-        printInstruction(Target, '+', ReplacementAddress, MI);
+        printInstruction(Target, FindingLineKind::Added, ReplacementAddress, MI);
         ReplacementAddress += 4;
     }
     outs() << '\n';

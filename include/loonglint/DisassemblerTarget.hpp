@@ -36,6 +36,8 @@ class DisassemblerTarget {
     static llvm::Expected<DisassemblerTarget> create(Architecture TheArchitecture);
 
     void setABIVersion(unsigned Version);
+    void setUseColor(bool UseColor);
+
     void printInst(const llvm::MCInst &MI, uint64_t Address, llvm::raw_ostream &Output) const;
 
   private:

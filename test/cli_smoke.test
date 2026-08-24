@@ -8,4 +8,6 @@
 # RUN: not loonglint --definitely-not-an-option
 
 # HELP: USAGE: loonglint
+# HELP: Color Options:
+# HELP: --color
 # HELP-NOT: --verbose

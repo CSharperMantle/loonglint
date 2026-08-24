@@ -81,6 +81,10 @@ void DisassemblerTarget::setABIVersion(unsigned Version) {
     Disasm->setABIVersion(Version);
 }
 
+void DisassemblerTarget::setUseColor(bool UseColor) {
+    Printer->setUseColor(UseColor);
+}
+
 void DisassemblerTarget::printInst(const MCInst &MI, uint64_t Address, raw_ostream &Output) const {
     Printer->printInst(&MI, Address, "", *MSTI, Output);
 }

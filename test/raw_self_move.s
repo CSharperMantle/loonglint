@@ -3,11 +3,11 @@
 
 # RUN: llvm-mc -triple=loongarch32 -filetype=obj %s -o %t.32.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.32.o %t.32.bin
-# RUN: not loonglint --input-format=raw --arch=loongarch32 %t.32.bin | FileCheck %s
+# RUN: not loonglint --color=false --input-format=raw --arch=loongarch32 %t.32.bin | FileCheck %s
 
 # RUN: llvm-mc -triple=loongarch64 -filetype=obj %s -o %t.64.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.64.o %t.64.bin
-# RUN: not loonglint --input-format=raw --arch=loongarch64 %t.64.bin | FileCheck %s
+# RUN: not loonglint --color=false --input-format=raw --arch=loongarch64 %t.64.bin | FileCheck %s
 
 # CHECK: {{.*}}.bin:<raw>:0x0: delete redundant self-move [integer/self-move]
 # CHECK-NEXT:   - 0x00000000  move $a0, $a0
