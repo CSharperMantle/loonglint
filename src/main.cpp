@@ -123,14 +123,14 @@ static void printInstruction(DisassemblerTarget &Target, FindingLineKind Kind, u
     case FindingLineKind::Removed: {
         WithColor LineColor(outs(), raw_ostream::RED);
         Target.setUseColor(LineColor.colorsEnabled());
-        LineColor << "  - " << format_hex(Address, 10);
+        LineColor << "\t- " << format_hex(Address, 10);
         Target.printInst(Inst, Address, LineColor);
         break;
     }
     case FindingLineKind::Added: {
         WithColor LineColor(outs(), raw_ostream::GREEN);
         Target.setUseColor(LineColor.colorsEnabled());
-        LineColor << "  + " << format_hex(Address, 10);
+        LineColor << "\t+ " << format_hex(Address, 10);
         Target.printInst(Inst, Address, LineColor);
         break;
     }
