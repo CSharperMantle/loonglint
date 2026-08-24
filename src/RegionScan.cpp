@@ -79,19 +79,25 @@ RegionSummary ScannedRegion::summary() const {
 }
 
 void ScannedRegion::forEachGap(GapHandler HandleGap) const {
-    size_t WordIndex = 0;
-    while (WordIndex < WordCount) {
-        if (!OpaqueWords.test(static_cast<unsigned>(WordIndex))) {
-            ++WordIndex;
-            continue;
+    const auto EmitGap = [&](unsigned BeginWord, unsigned EndWord) {
+        HandleGap(Address + static_cast<uint64_t>(BeginWord) * 4,
+                  Address + static_cast<uint64_t>(EndWord) * 4);
+    };
+
+    std::optional<unsigned> GapBegin;
+    unsigned GapEnd = 0;
+    for (unsigned WordIndex : OpaqueWords) {
+        if (!GapBegin) {
+            GapBegin = WordIndex;
+        } else if (WordIndex != GapEnd) {
+            EmitGap(*GapBegin, GapEnd);
+            GapBegin = WordIndex;
         }
-
-        const size_t GapBegin = WordIndex;
-        while (WordIndex < WordCount && OpaqueWords.test(static_cast<unsigned>(WordIndex)))
-            ++WordIndex;
-
-        HandleGap(Address + GapBegin * 4, Address + WordIndex * 4);
+        GapEnd = WordIndex + 1;
     }
+
+    if (GapBegin)
+        EmitGap(*GapBegin, GapEnd);
 }
 
 Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
