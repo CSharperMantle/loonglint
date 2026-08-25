@@ -9,7 +9,7 @@
 # CHECK-NEXT:   - 0x00001000  move $a0, $a0
 # CHECK-EMPTY:
 # CHECK-NEXT: 1 finding(s)
-# CHECK-NEXT:	integer/self-move: 1
+# CHECK-NEXT: 1 integer/self-move
 # CHECK-NOT: Scan incomplete
 
 .text

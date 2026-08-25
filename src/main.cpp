@@ -108,9 +108,16 @@ class StatsReport {
             return std::get<1>(LHS) > std::get<1>(RHS);
         });
 
+        const unsigned HitWidth =
+            !RankedRuleHits.empty()
+                ? static_cast<unsigned>(utostr(std::get<1>(RankedRuleHits.front())).size())
+                : 1;
+
         Output << Findings << " finding(s)\n";
-        for (const auto &[Id, Hits] : RankedRuleHits)
-            Output << '\t' << Id << ": " << Hits << '\n';
+        for (const auto &[Id, Hits] : RankedRuleHits) {
+            const std::string HitText = utostr(Hits);
+            Output << '\t' << right_justify(HitText, HitWidth) << '\t' << Id << '\n';
+        }
 
         if (SkippedWords || TrailingBytes) {
             Output << "Scan incomplete:";

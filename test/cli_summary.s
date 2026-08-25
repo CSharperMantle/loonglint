@@ -6,8 +6,8 @@
 # RUN: not loonglint --input-format=raw --arch=loongarch64 %t.bin | FileCheck %s
 
 # CHECK: 3 finding(s)
-# CHECK-NEXT:	control/branch-to-next: 2
-# CHECK-NEXT:	integer/self-move: 1
+# CHECK-NEXT: 2 control/branch-to-next
+# CHECK-NEXT: 1 integer/self-move
 # CHECK-NEXT: Scan incomplete: 1 undecodable word(s) skipped; 1 trailing byte(s) ignored.
 
 .text

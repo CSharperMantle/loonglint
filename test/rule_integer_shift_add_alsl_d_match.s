@@ -19,7 +19,7 @@
 # CHECK-NEXT: {{.*}}add.d{{.*}}$t2, $t2, $a6
 # CHECK-NEXT: {{.*}}alsl.d{{.*}}$t2, $a6, $a6, 3
 # CHECK: 4 finding(s)
-# CHECK: integer/shift-add-alsl-d: 4
+# CHECK: 4 integer/shift-add-alsl-d
 
 .text
 .globl _start

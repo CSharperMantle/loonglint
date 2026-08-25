@@ -12,8 +12,8 @@
 # CHECK-NEXT:   - 0x00000004  move $a0, $a0
 # CHECK-EMPTY:
 # CHECK-NEXT: 2 finding(s)
-# CHECK-NEXT:	integer/self-move: 1
-# CHECK-NEXT:	control/branch-to-next: 1
+# CHECK-NEXT: 1 integer/self-move
+# CHECK-NEXT: 1 control/branch-to-next
 # CHECK-NOT: Scan incomplete
 
 .text
