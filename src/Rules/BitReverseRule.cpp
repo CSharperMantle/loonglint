@@ -48,7 +48,9 @@ std::optional<Rule::Match> BitReverseRule::match(ArrayRef<Instruction> Instructi
         Reg RdReg, RjReg;
         if (!matchInst(F, FirstOp, RdReg, RjReg))
             continue;
-        const MCRegister Rd = RdReg.get(), Rj = RjReg.get();
+        const MCRegister Rd = RdReg.get();
+        const MCRegister Rj = RjReg.get();
+
         if (!matchInst(S, SecondOp, RdReg, RdReg))
             continue;
         Rule::Match Result;

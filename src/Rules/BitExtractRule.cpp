@@ -7,7 +7,6 @@
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
 
 #include "llvm/MC/MCInstBuilder.h"
-#include "llvm/Support/MathExtras.h"
 
 #include <cassert>
 #include <cstdint>
@@ -55,8 +54,10 @@ std::optional<Rule::Match> BitExtractRule::match(ArrayRef<Instruction> Instructi
     Imm LsbImm;
     if (!matchInst(F, ShiftOp, ShiftRdReg, ShiftRjReg, LsbImm))
         return std::nullopt;
-    const MCRegister ShiftRd = ShiftRdReg.get(), ShiftRj = ShiftRjReg.get();
+    const MCRegister ShiftRd = ShiftRdReg.get();
+    const MCRegister ShiftRj = ShiftRjReg.get();
     const int64_t Lsb = LsbImm.get();
+
     if (Lsb < 1)
         return std::nullopt;
 

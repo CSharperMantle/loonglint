@@ -46,7 +46,8 @@ std::optional<Rule::Match> ShiftDoubleRule::match(ArrayRef<Instruction> Instruct
         {
             Reg AddRdReg, AddRjReg, AddRkReg;
             if (matchInst(F, AddOp, AddRdReg, AddRjReg, AddRjReg)) {
-                const MCRegister AddRd = AddRdReg.get(), AddRj = AddRjReg.get();
+                const MCRegister AddRd = AddRdReg.get();
+                const MCRegister AddRj = AddRjReg.get();
                 Imm ShamtImm;
                 if (matchInst(S, SlliOp, AddRdReg, AddRdReg, ShamtImm)) {
                     const int64_t Shamt = ShamtImm.get();
@@ -65,7 +66,8 @@ std::optional<Rule::Match> ShiftDoubleRule::match(ArrayRef<Instruction> Instruct
             Reg SlliRdReg, SlliRjReg;
             Imm ShamtImm;
             if (matchInst(F, SlliOp, SlliRdReg, SlliRjReg, ShamtImm)) {
-                const MCRegister SlliRd = SlliRdReg.get(), SlliRj = SlliRjReg.get();
+                const MCRegister SlliRd = SlliRdReg.get();
+                const MCRegister SlliRj = SlliRjReg.get();
                 const int64_t Shamt = ShamtImm.get();
                 if (matchInst(S, AddOp, SlliRdReg, SlliRdReg, SlliRdReg) && Shamt >= 1 &&
                     Shamt + 1 <= MaxShift) {

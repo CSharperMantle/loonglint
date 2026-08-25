@@ -45,7 +45,8 @@ std::optional<Rule::Match> AddiPairRule::match(ArrayRef<Instruction> Instruction
         Imm FirstSi12Imm;
         if (!matchInst(F, Op, RdReg, RjReg, FirstSi12Imm))
             continue;
-        const MCRegister Rd = RdReg.get(), Rj = RjReg.get();
+        const MCRegister Rd = RdReg.get();
+        const MCRegister Rj = RjReg.get();
         const int64_t FirstSi12 = FirstSi12Imm.get();
 
         Imm SecondSi12Imm;

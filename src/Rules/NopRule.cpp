@@ -39,8 +39,12 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
         Reg RdReg, RjReg, RkReg;
         if (!matchInst(I, Opcode, RdReg, RjReg, RkReg))
             return std::nullopt;
-        const MCRegister Rd = RdReg.get(), Rj = RjReg.get(), Rk = RkReg.get();
-        const bool JIsRd = Rj == Rd, KIsRd = Rk == Rd;
+        const MCRegister Rd = RdReg.get();
+        const MCRegister Rj = RjReg.get();
+        const MCRegister Rk = RkReg.get();
+
+        const bool JIsRd = Rj == Rd;
+        const bool KIsRd = Rk == Rd;
         if ((JIsRd && (Rk == LoongArch::R0 || KIsRd)) || (KIsRd && (Rj == LoongArch::R0 || JIsRd)))
             return Match{};
         return std::nullopt;
@@ -65,6 +69,7 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
         Reg RdReg, RjReg, RkReg;
         if (!matchInst(I, Opcode, RdReg, RjReg, RkReg))
             return std::nullopt;
+
         const MCRegister Rd = RdReg.get();
         const MCRegister Rj = RjReg.get();
         const MCRegister Rk = RkReg.get();

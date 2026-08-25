@@ -38,7 +38,8 @@ std::optional<Rule::Match> ShiftChainRule::match(ArrayRef<Instruction> Instructi
     const MCInst &S = Instructions[1].Inst;
     const unsigned Op = F.getOpcode();
 
-    bool IsD = false, IsArith = false;
+    bool IsD = false;
+    bool IsArith = false;
     switch (Op) {
     case LoongArch::SLLI_D:
     case LoongArch::SRLI_D:
@@ -59,7 +60,8 @@ std::optional<Rule::Match> ShiftChainRule::match(ArrayRef<Instruction> Instructi
     Imm FirstShamtImm;
     if (!matchInst(F, Op, RdReg, RjReg, FirstShamtImm))
         return std::nullopt;
-    const MCRegister Rd = RdReg.get(), Rj = RjReg.get();
+    const MCRegister Rd = RdReg.get();
+    const MCRegister Rj = RjReg.get();
     const int64_t FirstShamt = FirstShamtImm.get();
 
     // Second shift reuses the temporary: op rd, rd, Shamt.

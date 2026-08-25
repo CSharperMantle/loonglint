@@ -49,7 +49,8 @@ std::optional<Rule::Match> ZeroExtendRule::match(ArrayRef<Instruction> Instructi
     Imm ShamtImm;
     if (!matchInst(F, Op, SlliRdReg, SlliRjReg, ShamtImm))
         return std::nullopt;
-    const MCRegister SlliRd = SlliRdReg.get(), SlliRj = SlliRjReg.get();
+    const MCRegister SlliRd = SlliRdReg.get();
+    const MCRegister SlliRj = SlliRjReg.get();
     const int64_t Shamt = ShamtImm.get();
 
     // Second shift: SRLI.{W,D} SlliRd, SlliRd, Shamt (same amount).

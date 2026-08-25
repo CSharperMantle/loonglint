@@ -49,7 +49,8 @@ std::optional<Rule::Match> RotateCombineRule::match(ArrayRef<Instruction> Instru
     Imm FirstShamtImm;
     if (!matchInst(F, Op, RdReg, RjReg, FirstShamtImm))
         return std::nullopt;
-    const MCRegister Rd = RdReg.get(), Rj = RjReg.get();
+    const MCRegister Rd = RdReg.get();
+    const MCRegister Rj = RjReg.get();
     const int64_t FirstShamt = FirstShamtImm.get();
 
     Imm SecondShamtImm;

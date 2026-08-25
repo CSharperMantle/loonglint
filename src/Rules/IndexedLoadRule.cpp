@@ -43,7 +43,9 @@ std::optional<Rule::Match> IndexedLoadRule::match(ArrayRef<Instruction> Instruct
     if (!matchInst(F, LoongArch::ADD_D, AddRdReg, AddRjReg, AddRkReg))
         return std::nullopt;
     const MCRegister AddRd = AddRdReg.get();
-    const MCRegister AddRj = AddRjReg.get(), AddRk = AddRkReg.get();
+    const MCRegister AddRj = AddRjReg.get();
+    const MCRegister AddRk = AddRkReg.get();
+
     // Address sources must not alias the temporary; the indexed load reads them
     // after the ADD has written it.
     if (AddRj == AddRd || AddRk == AddRd)
