@@ -1,4 +1,4 @@
-## Reject shift-plus-add pairs split by control-flow or region boundaries.
+## Reject shift-plus-ADD pairs split by control-flow or region boundaries.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o

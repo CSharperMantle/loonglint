@@ -48,7 +48,7 @@ std::optional<Rule::Match> ShiftAddAlslDRule::match(ArrayRef<Instruction> Instru
         return std::nullopt;
 
     Reg AddRjReg, AddRkReg;
-    if (!matchInst(Instructions[1].Inst, LoongArch::ADD_D, Reg(SlliRd), AddRjReg, AddRkReg))
+    if (!matchInst(Instructions[1].Inst, LoongArch::ADD_D, SlliRdReg, AddRjReg, AddRkReg))
         return std::nullopt;
     const MCRegister AddRj = AddRjReg.get();
     const MCRegister AddRk = AddRkReg.get();

@@ -7,7 +7,7 @@
 
 # CHECK: 3 finding(s)
 # CHECK-NEXT: 2 control/branch-to-next
-# CHECK-NEXT: 1 integer/self-move
+# CHECK-NEXT: 1 integer/nop
 # CHECK-NEXT: Scan incomplete: 1 undecodable word(s) skipped; 1 trailing byte(s) ignored.
 
 .text

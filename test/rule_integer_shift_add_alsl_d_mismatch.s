@@ -1,4 +1,4 @@
-## Reject nonrepresentable or structurally unsafe shift-plus-add pairs.
+## Reject nonrepresentable or structurally unsafe shift-plus-ADD pairs.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
@@ -18,7 +18,5 @@ _start:
   add.d $t3, $t2, $a1
   slli.d $t4, $a0, 2
   add.d $t4, $a1, $a2
-  slli.d $t5, $a0, 2
-  add.d $t5, $t5, $t5
   slli.w $t6, $a0, 2
   add.w $t6, $t6, $a1

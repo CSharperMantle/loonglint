@@ -1,4 +1,4 @@
-## Reject non-self-move OR forms.
+## Reject non-identity logical forms.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.32.o
@@ -14,6 +14,10 @@
 .text
 .globl _start
 _start:
-  or $a0, $a1, $zero
-  or $a2, $zero, $a3
-  addi.w $a4, $a4, 1
+  or    $a0, $a1, $zero
+  or    $a2, $zero, $a3
+  and   $a4, $a4, $a5
+  andn  $a6, $zero, $a6
+  xor   $a7, $a7, $a7
+  ori   $t0, $t0, 1
+  xori  $t1, $t2, 0

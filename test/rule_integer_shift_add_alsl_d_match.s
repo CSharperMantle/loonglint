@@ -1,4 +1,4 @@
-## Match LA64 shift-plus-add pairs representable by ALSL.D.
+## Match LA64 shift-plus-ADD pairs representable by ALSL.D.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o

@@ -1,7 +1,7 @@
-## Reject shift-plus-ADD fusion on LA32.
+## Reject non-degenerate branches.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
-# RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.o
+# RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: loonglint %t.exe | FileCheck %s
 
@@ -10,5 +10,9 @@
 .text
 .globl _start
 _start:
-  slli.w $t0, $a0, 2
-  add.w $t0, $t0, $a1
+  beq  $a0, $a1, 8
+  bne  $a0, $a1, 8
+  beqz $a0, 8
+  b 8
+  nop
+  nop

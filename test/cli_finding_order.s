@@ -8,11 +8,11 @@
 # CHECK: {{.*}}.bin:<raw>:0x0: delete branch to next instruction [control/branch-to-next]
 # CHECK-NEXT:   - 0x00000000  b 4
 # CHECK-EMPTY:
-# CHECK-NEXT: {{.*}}.bin:<raw>:0x4: delete redundant self-move [integer/self-move]
+# CHECK-NEXT: {{.*}}.bin:<raw>:0x4: delete or replace non-canonical NOP instruction [integer/nop]
 # CHECK-NEXT:   - 0x00000004  move $a0, $a0
 # CHECK-EMPTY:
 # CHECK-NEXT: 2 finding(s)
-# CHECK-NEXT: 1 integer/self-move
+# CHECK-NEXT: 1 integer/nop
 # CHECK-NEXT: 1 control/branch-to-next
 # CHECK-NOT: Scan incomplete
 

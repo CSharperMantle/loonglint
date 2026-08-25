@@ -30,9 +30,30 @@ add_llvm_tool(loonglint
   src/DisassemblerTarget.cpp
   src/main.cpp
   src/RuleManager.cpp
+  src/Rules/AddiPairRule.cpp
+  src/Rules/AddressLoadRule.cpp
+  src/Rules/AndNotRule.cpp
+  src/Rules/BitCountRule.cpp
+  src/Rules/BitExtractRule.cpp
+  src/Rules/BitReverseRule.cpp
   src/Rules/BranchToNextRule.cpp
-  src/Rules/SelfMoveRule.cpp
+  src/Rules/ByteReverseRule.cpp
+  src/Rules/DegenerateBranchRule.cpp
+  src/Rules/IndexedLoadRule.cpp
+  src/Rules/LoadExtendRule.cpp
+  src/Rules/LoadZeroExtendRule.cpp
+  src/Rules/MulhSextRule.cpp
+  src/Rules/NopLA32Rule.cpp
+  src/Rules/NopLA64Rule.cpp
+  src/Rules/NopRule.cpp
+  src/Rules/NotOrRule.cpp
+  src/Rules/OrNotRule.cpp
+  src/Rules/RotateCombineRule.cpp
   src/Rules/ShiftAddAlslDRule.cpp
+  src/Rules/ShiftChainRule.cpp
+  src/Rules/ShiftDoubleRule.cpp
+  src/Rules/ShiftMaskRule.cpp
+  src/Rules/ZeroExtendRule.cpp
   src/ScannedRegion.cpp
 )
 
