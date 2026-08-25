@@ -2,7 +2,24 @@
 
 LoongLint (also stylized as "loonglint" and "LOONGLINT" in the source code) checks [LoongArch](https://docs.kernel.org/arch/loongarch/introduction.html) binaries for common optimizable peephole patterns.
 
-WIP.
+## Design
+
+This is a peephole linter for LoongArch{32S,64} ELF and raw binaries. It scans the input binary, linearly, for pre-defined patterns that are often optimizable. For example, the following two-instruction sequences can be fused into one:
+
+```asm
+addi.d $t0, $t0, 8
+ld.d $a0, $t0, 0
+
+# ->
+
+ld.d $a0, $t0, 8
+```
+
+For a list of implemented peephole rules, please refer to [RULES.md](./RULES.md).
+
+Note that due to the intrinsic limitation of linear scan, there might be false positives due to unrecognized entries. Please take the lint results with a grain of salt.
+
+This project is inspired by [gaul/armlint](https://github.com/gaul/armlint). The disassembly and analysis infrastructure is provided by [LLVM](https://llvm.org/). Matching is done by a [BOLT](https://github.com/llvm/llvm-project/blob/main/bolt/README.md)-inspired DSL.
 
 ## Installation
 
@@ -27,3 +44,5 @@ This program is free software: you can redistribute it and/or modify it under th
 This program is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**; without even the implied warranty of **MERCHANTABILITY** or **FITNESS FOR A PARTICULAR PURPOSE**. See the GNU General Public License for more details.
 
 You should have received [a copy](./LICENSE) of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Some parts of the program are Derivative Works of the LLVM source. Each of such source is indicated by special comment headers. Please see [LICENSE-LLVM](./LICENSE-LLVM) for licensing information of such content.
