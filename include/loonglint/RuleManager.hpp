@@ -25,7 +25,7 @@ using FindingHandler = llvm::function_ref<void(const Finding &)>;
 
 class RuleManager final {
   public:
-    RuleManager();
+    explicit RuleManager(const DisassemblerTarget &Target);
 
     auto rules() const {
         return llvm::make_pointee_range(Rules);
@@ -33,12 +33,12 @@ class RuleManager final {
 
     unsigned maxInstructionCount() const;
 
-    uint64_t runWindow(llvm::ArrayRef<Instruction> Window, const Rule::Context &Ctx,
-                       FindingHandler HandleFinding) const;
+    uint64_t runWindow(llvm::ArrayRef<Instruction> Window, FindingHandler HandleFinding) const;
 
   private:
     void registerRule(std::unique_ptr<Rule> NewRule);
 
+    const DisassemblerTarget &Target;
     llvm::SmallVector<std::unique_ptr<Rule>, 0> Rules;
 };
 

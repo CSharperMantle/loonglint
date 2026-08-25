@@ -29,8 +29,6 @@ struct Instruction {
     llvm::MCInst Inst;
 };
 
-class ScannedRegion;
-
 class DisassemblerTarget {
   public:
     static llvm::Expected<DisassemblerTarget> create(Architecture TheArchitecture);
@@ -42,6 +40,7 @@ class DisassemblerTarget {
 
   private:
     friend class ScannedRegion;
+    friend class RuleManager;
 
     explicit DisassemblerTarget(Architecture Arch) : Arch(Arch) {}
 

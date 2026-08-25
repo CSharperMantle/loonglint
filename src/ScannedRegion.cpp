@@ -138,7 +138,7 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
         assert(!Window.empty() && Window.front().Address == Address + StartWord * 4 &&
                "bounded instruction window lost synchronization");
 
-        FindingCount += Manager.runWindow(Window, {Target.Arch, *Target.MIA}, HandleFinding);
+        FindingCount += Manager.runWindow(Window, HandleFinding);
 
         Window.erase(Window.begin());
     }

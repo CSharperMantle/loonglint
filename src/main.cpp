@@ -57,8 +57,6 @@ cl::opt<ArchitectureOption>
          cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
-cl::opt<bool> ListChecks("list-checks", cl::desc("List available checks"),
-                         cl::cat(LoongLintCategory));
 
 } // namespace opts
 
@@ -70,6 +68,11 @@ enum class FindingLineKind { Removed, Added };
 
 class StatsReport {
   public:
+    explicit StatsReport(const RuleManager &Manager) {
+        for (const auto &R : Manager.rules())
+            RuleOrder.emplace_back(R.getID());
+    }
+
     void addRuleHit(const Rule &MatchedRule) {
         ++RuleHits[MatchedRule.getID()];
     }
@@ -94,12 +97,12 @@ class StatsReport {
         return Findings != 0;
     }
 
-    void report(const RuleManager &Manager, raw_ostream &Output) const {
+    void report(raw_ostream &Output) const {
         SmallVector<std::tuple<StringRef, uint64_t>, 0> RankedRuleHits;
         RankedRuleHits.reserve(RuleHits.size());
-        for (const auto &R : Manager.rules())
-            if (const uint64_t Hits = RuleHits.lookup(R.getID()))
-                RankedRuleHits.emplace_back(R.getID(), Hits);
+        for (const auto &Id : RuleOrder)
+            if (const uint64_t Hits = RuleHits.lookup(Id))
+                RankedRuleHits.emplace_back(Id, Hits);
 
         stable_sort(RankedRuleHits, [](const auto &LHS, const auto &RHS) {
             return std::get<1>(LHS) > std::get<1>(RHS);
@@ -126,6 +129,7 @@ class StatsReport {
     uint64_t DecodedInstructions = 0;
     uint64_t SkippedWords = 0;
     uint64_t TrailingBytes = 0;
+    SmallVector<StringRef, 0> RuleOrder;
     DenseMap<StringRef, uint64_t> RuleHits;
 };
 
@@ -138,7 +142,7 @@ static void printError(StringRef Message) {
 }
 
 static bool validateOptions() {
-    if (!opts::ListChecks && opts::InputFile.empty()) {
+    if (opts::InputFile.empty()) {
         printError("no input file");
         return false;
     }
@@ -221,7 +225,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     const RegionSummary Summary = Region->summary();
     printRegionWarnings(Name, *Region, Summary);
 
-    StatsReport SR;
+    StatsReport SR(Manager);
     Expected<uint64_t> FindingCount = Region->runRules(Manager, [&](const Finding &F) {
         printFinding(Target, Name, F);
         SR.addRuleHit(F.MatchedRule);
@@ -233,7 +237,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     return SR;
 }
 
-static Expected<StatsReport> lintRaw(const RuleManager &Manager, MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
     if (opts::Arch == ArchitectureOption::Unspecified)
         return createStringError("--arch is required for raw input");
 
@@ -245,11 +249,12 @@ static Expected<StatsReport> lintRaw(const RuleManager &Manager, MemoryBufferRef
     if (auto E = Target.takeError())
         return E;
 
+    RuleManager Manager(*Target);
     return lintRegion(Manager, *Target, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
                       opts::BaseAddress);
 }
 
-static Expected<StatsReport> lintELF(const RuleManager &Manager, MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
     Expected<std::unique_ptr<object::ObjectFile>> Object =
         object::ObjectFile::createObjectFile(Buffer);
     if (auto E = Object.takeError())
@@ -276,7 +281,8 @@ static Expected<StatsReport> lintELF(const RuleManager &Manager, MemoryBufferRef
 
     Target->setABIVersion(TheELF->getEIdentABIVersion());
 
-    StatsReport SR;
+    RuleManager Manager(*Target);
+    StatsReport SR(Manager);
     bool HasCode = false;
     for (const auto &Section : Object->get()->sections()) {
         if (!Section.isText() || Section.getSize() == 0)
@@ -307,7 +313,7 @@ static Expected<StatsReport> lintELF(const RuleManager &Manager, MemoryBufferRef
     return SR;
 }
 
-static Expected<StatsReport> lintInput(const RuleManager &Manager) {
+static Expected<std::unique_ptr<MemoryBuffer>> readInput() {
     ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer =
         MemoryBuffer::getFile(opts::InputFile, /*IsText=*/false,
                               /*RequiresNullTerminator=*/false);
@@ -315,6 +321,13 @@ static Expected<StatsReport> lintInput(const RuleManager &Manager) {
         return createStringError(Buffer.getError(), "cannot read '%s'", opts::InputFile.c_str());
     if ((*Buffer)->getBufferSize() == 0)
         return createStringError("input '%s' is empty", opts::InputFile.c_str());
+    return std::move(*Buffer);
+}
+
+static Expected<StatsReport> lintInput() {
+    Expected<std::unique_ptr<MemoryBuffer>> Buffer = readInput();
+    if (auto E = Buffer.takeError())
+        return E;
 
     const MemoryBufferRef Ref = (*Buffer)->getMemBufferRef();
 
@@ -326,15 +339,16 @@ static Expected<StatsReport> lintInput(const RuleManager &Manager) {
         case file_magic::elf_executable:
         case file_magic::elf_shared_object:
         case file_magic::elf_core:
-            return lintELF(Manager, Ref);
+            return lintELF(Ref);
         default:
-            return lintRaw(Manager, Ref);
+            return lintRaw(Ref);
         }
     case InputFormat::Elf:
-        return lintELF(Manager, Ref);
+        return lintELF(Ref);
     case InputFormat::Raw:
-        return lintRaw(Manager, Ref);
+        return lintRaw(Ref);
     }
+    llvm_unreachable("unhandled input format");
 }
 
 int main(int argc, char **argv) {
@@ -347,22 +361,15 @@ int main(int argc, char **argv) {
     if (!validateOptions())
         return 2;
 
-    RuleManager Manager;
-    if (opts::ListChecks) {
-        for (const auto &R : Manager.rules())
-            outs() << R.getID() << ": " << R.getDescription() << '\n';
-        return 0;
-    }
-
     LLVMInitializeLoongArchTargetInfo();
     LLVMInitializeLoongArchTargetMC();
     LLVMInitializeLoongArchDisassembler();
 
-    Expected<StatsReport> SR = lintInput(Manager);
+    Expected<StatsReport> SR = lintInput();
     if (auto E = SR.takeError()) {
         printError(toString(std::move(E)));
         return 2;
     }
-    SR->report(Manager, outs());
+    SR->report(outs());
     return SR->hasFindings() ? 1 : 0;
 }
