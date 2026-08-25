@@ -130,7 +130,7 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
                 return createStringError("instruction at 0x%llx became undecodable",
                                          static_cast<unsigned long long>(InstructionAddress));
 
-            Window.push_back({InstructionAddress, std::move(*Inst)});
+            Window.emplace_back(InstructionAddress, std::move(*Inst));
             ++NextWord;
         }
 
