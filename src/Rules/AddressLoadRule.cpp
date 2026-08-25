@@ -21,7 +21,7 @@ StringRef AddressLoadRule::getID() const {
 }
 
 StringRef AddressLoadRule::getDescription() const {
-    return "fold address ADDI.[DW] into LD.[DW] offset";
+    return "fold address ADDI.[DW] into integer load offset";
 }
 
 unsigned AddressLoadRule::getInstructionCount() const {
@@ -37,36 +37,50 @@ std::optional<Rule::Match> AddressLoadRule::match(ArrayRef<Instruction> Instruct
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
 
-    for (const auto &[AddiOp, LdOp, IsD] : {
-             std::make_tuple(LoongArch::ADDI_D, LoongArch::LD_D, true),
-             std::make_tuple(LoongArch::ADDI_W, LoongArch::LD_W, false),
-         }) {
-        if (IsD && Ctx.Arch != Architecture::LoongArch64)
-            continue;
-        if (!IsD && Ctx.Arch != Architecture::LoongArch32)
-            continue;
+    const unsigned AddiOp =
+        Ctx.Arch == Architecture::LoongArch64 ? LoongArch::ADDI_D : LoongArch::ADDI_W;
 
-        Reg AddiRdReg, AddiRjReg;
-        Imm AddiSi12Imm;
-        if (!matchInst(F, AddiOp, AddiRdReg, AddiRjReg, AddiSi12Imm))
-            continue;
-        const MCRegister AddiRd = AddiRdReg.get(), AddiRj = AddiRjReg.get();
-        const int64_t AddiSi12 = AddiSi12Imm.get();
+    Reg AddiRdReg, AddiRjReg;
+    Imm AddiSi12Imm;
+    if (!matchInst(F, AddiOp, AddiRdReg, AddiRjReg, AddiSi12Imm))
+        return std::nullopt;
+    const MCRegister AddiRd = AddiRdReg.get();
+    const MCRegister AddiRj = AddiRjReg.get();
+    const int64_t AddiSi12 = AddiSi12Imm.get();
 
-        // LD rd, rd, Si12: base is the address temporary, overwritten by the load.
-        Imm LdSi12Imm;
-        if (!matchInst(S, LdOp, AddiRdReg, AddiRdReg, LdSi12Imm))
-            continue;
-        const int64_t LdSi12 = LdSi12Imm.get();
+    if (AddiRd == LoongArch::R0)
+        return std::nullopt;
 
-        const int64_t Combined = AddiSi12 + LdSi12;
-        if (!isInt<12>(Combined))
-            continue;
+    Rule::Match Result;
+    const auto TryLoad = [&](unsigned LoadOp, bool IsScaled) {
+        Imm LoadOffsetImm;
+        if (!matchInst(S, LoadOp, AddiRdReg, AddiRdReg, LoadOffsetImm))
+            return false;
 
-        Rule::Match Result;
+        const int64_t Combined = AddiSi12 + LoadOffsetImm.get();
+        // LDPTR's MCOperand immediate is already shifted properly by the encoder/decoder.
+        if (IsScaled ? !isShiftedInt<14, 2>(Combined) : !isInt<12>(Combined))
+            return false;
+
         Result.Replacement.emplace_back(
-            MCInstBuilder(LdOp).addReg(AddiRd).addReg(AddiRj).addImm(Combined));
-        return Result;
+            MCInstBuilder(LoadOp).addReg(AddiRd).addReg(AddiRj).addImm(Combined));
+        return true;
+    };
+
+    if (Ctx.Arch == Architecture::LoongArch32) {
+        for (const unsigned LoadOp : {LoongArch::LD_B, LoongArch::LD_H, LoongArch::LD_W,
+                                      LoongArch::LD_BU, LoongArch::LD_HU})
+            if (TryLoad(LoadOp, false))
+                return Result;
+    } else {
+        for (const unsigned LoadOp :
+             {LoongArch::LD_B, LoongArch::LD_H, LoongArch::LD_W, LoongArch::LD_D, LoongArch::LD_BU,
+              LoongArch::LD_HU, LoongArch::LD_WU})
+            if (TryLoad(LoadOp, false))
+                return Result;
+        for (const unsigned LoadOp : {LoongArch::LDPTR_W, LoongArch::LDPTR_D})
+            if (TryLoad(LoadOp, true))
+                return Result;
     }
 
     return std::nullopt;

@@ -8,11 +8,11 @@ This is a peephole linter for LoongArch{32S,64} ELF and raw binaries. It scans t
 
 ```asm
 addi.d $t0, $t0, 8
-ld.d $a0, $t0, 0
+ld.d $t0, $t0, 0
 
 # ->
 
-ld.d $a0, $t0, 8
+ld.d $t0, $t0, 8
 ```
 
 For a list of implemented peephole rules, please refer to [RULES.md](./RULES.md).

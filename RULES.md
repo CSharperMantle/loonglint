@@ -549,25 +549,34 @@ Fixed-width addition is associative modulo the operation width; no memory or con
 
 ```asm
 addi.d Rd, Rj, AddSi12
-ld.d Rd, Rd, LdSi12
+ld.{b,h,w,d,bu,hu,wu} Rd, Rd, LoadOffset
+# or
+ldptr.[wd] Rd, Rd, LoadOffset
 # ->
-ld.d Rd, Rj, CombinedSi12
-
-# word form substitutes addi.w/ld.w and applies on LA32.
+ld.{b,h,w,d,bu,hu,wu} Rd, Rj, CombinedOffset
+# or
+ldptr.[wd] Rd, Rj, CombinedOffset
 ```
 
 ### Constraints
 
-`.D` on LA64; `.W` on LA32.
+`ADDI.D` address arithmetic with all listed loads on LA64; `ADDI.W` address arithmetic with `LD.{B,H,W,BU,HU}` on LA32.
 
-* `CombinedSi12 = AddSi12 + LdSi12` must fit the replacement load's signed 12-bit offset, and
-* The load destination equal to the address temporary proves the temporary is overwritten.
+* The load data width is independent of the address-calculation width.
+* For ordinary loads, `CombinedOffset = AddSi12 + LoadOffset` must fit the signed 12-bit byte offset.
+* For `LDPTR.{W/D}`, `CombinedOffset = AddSi12 + LoadOffset` must be a signed 14-bit value shifted left by 2.
+* The address temporary must not be `$zero`.
+* The load destination must equal the address temporary, proving that the temporary is overwritten.
 
-One base-register addition plus one memory access folds into the memory displacement when the effective address and destination aliasing are preserved.
+For `LDPTR.{W/D}`, decoded `MCOperand` immediates are byte offsets even though the encoded `si14` field is shifted left by 2; validate the combined byte offset with the shifted-14-bit constraint and keep that byte offset in the replacement `MCInst`.
+
+`ADDI.W` on LA64 is intentionally excluded: without an address/sign-extension proof, it is not interchangeable with the 64-bit address calculation.
+
+One base-register addition plus one immediate-addressed load folds into the load displacement when the effective address and destination aliasing are preserved. Distinct-destination forms remain deferred because they require liveness analysis.
 
 ### Evidence
 
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1475-L1480>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.cpp#L917-L998>
 
 ## `LoadExtendRule` (`memory/load-extend`)
 
