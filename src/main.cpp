@@ -98,7 +98,7 @@ class StatsReport {
     }
 
     void report(raw_ostream &Output) const {
-        SmallVector<std::tuple<StringRef, uint64_t>, 0> RankedRuleHits;
+        SmallVector<std::tuple<StringRef, uint64_t>> RankedRuleHits;
         RankedRuleHits.reserve(RuleHits.size());
         for (const auto &Id : RuleOrder)
             if (const uint64_t Hits = RuleHits.lookup(Id))
