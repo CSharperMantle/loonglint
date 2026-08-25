@@ -16,3 +16,5 @@ _start:
   ld.b  $t0, $t0, 0
   add.d $t2, $a0, $a1
   ld.b  $t2, $t2, 8
+  add.d $zero, $a2, $a3
+  ld.b  $zero, $zero, 0

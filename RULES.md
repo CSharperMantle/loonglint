@@ -614,6 +614,7 @@ ldx.{b,h,w,d} Rd, Rj, Rk
 
 LA64 only.
 
+* The address temporary must not be `$zero`, and
 * The address sources `Rj`/`Rk` must not alias `Rd`, since the indexed load reads them after the `ADD.D` has written the temporary.
 
 One base-plus-index addition followed by a zero-offset load folds into the indexed load when the index sources are preserved.
