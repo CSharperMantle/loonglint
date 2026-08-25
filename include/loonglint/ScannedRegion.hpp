@@ -4,7 +4,7 @@
 #define LOONGLINT_SCANNEDREGION_HPP
 
 #include "loonglint/DisassemblerTarget.hpp"
-#include "loonglint/Rules.hpp"
+#include "loonglint/RuleManager.hpp"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
@@ -17,13 +17,6 @@
 
 namespace loonglint {
 
-struct Finding {
-    const Rule &MatchedRule;
-    llvm::ArrayRef<Instruction> Instructions;
-    const RuleMatch &Match;
-};
-
-using FindingHandler = llvm::function_ref<void(const Finding &)>;
 using GapHandler = llvm::function_ref<void(uint64_t Begin, uint64_t End)>;
 
 struct RegionSummary {
@@ -38,7 +31,7 @@ class ScannedRegion {
     static llvm::Expected<ScannedRegion> create(const DisassemblerTarget &Target,
                                                 llvm::ArrayRef<uint8_t> Bytes, uint64_t Address);
 
-    llvm::Expected<uint64_t> runRules(llvm::ArrayRef<Rule> Rules,
+    llvm::Expected<uint64_t> runRules(const RuleManager &Manager,
                                       FindingHandler HandleFinding) const;
 
     RegionSummary summary() const;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "loonglint/DisassemblerTarget.hpp"
-#include "loonglint/Rules.hpp"
+#include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
 
 #include "llvm/ADT/DenseMap.h"
@@ -71,7 +71,7 @@ enum class FindingLineKind { Removed, Added };
 class StatsReport {
   public:
     void addRuleHit(const Rule &MatchedRule) {
-        ++RuleHits[&MatchedRule];
+        ++RuleHits[MatchedRule.getID()];
     }
 
     void add(const RegionSummary &Summary, uint64_t RegionFindings) {
@@ -94,20 +94,20 @@ class StatsReport {
         return Findings != 0;
     }
 
-    void report(raw_ostream &Output) const {
-        SmallVector<std::tuple<const Rule *, uint64_t>, 0> RankedRuleHits;
+    void report(const RuleManager &Manager, raw_ostream &Output) const {
+        SmallVector<std::tuple<StringRef, uint64_t>, 0> RankedRuleHits;
         RankedRuleHits.reserve(RuleHits.size());
-        for (const auto &R : rules())
-            if (const uint64_t Hits = RuleHits.lookup(&R))
-                RankedRuleHits.emplace_back(&R, Hits);
+        for (const auto &R : Manager.rules())
+            if (const uint64_t Hits = RuleHits.lookup(R.getID()))
+                RankedRuleHits.emplace_back(R.getID(), Hits);
 
         stable_sort(RankedRuleHits, [](const auto &LHS, const auto &RHS) {
             return std::get<1>(LHS) > std::get<1>(RHS);
         });
 
         Output << Findings << " finding(s)\n";
-        for (const auto &[R, Hits] : RankedRuleHits)
-            Output << '\t' << R->Id << ": " << Hits << '\n';
+        for (const auto &[Id, Hits] : RankedRuleHits)
+            Output << '\t' << Id << ": " << Hits << '\n';
 
         if (SkippedWords || TrailingBytes) {
             Output << "Scan incomplete:";
@@ -126,7 +126,7 @@ class StatsReport {
     uint64_t DecodedInstructions = 0;
     uint64_t SkippedWords = 0;
     uint64_t TrailingBytes = 0;
-    DenseMap<const Rule *, uint64_t> RuleHits;
+    DenseMap<StringRef, uint64_t> RuleHits;
 };
 
 static void printVersion(raw_ostream &Output) {
@@ -186,8 +186,8 @@ static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
     const uint64_t Address = TheFinding.Instructions.front().Address;
     WithColor(outs(), raw_ostream::WHITE)
         << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
-        << TheFinding.MatchedRule.Description << ' ';
-    WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.Id << ']';
+        << TheFinding.MatchedRule.getDescription() << ' ';
+    WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.getID() << ']';
     outs() << '\n';
 
     for (const auto &I : TheFinding.Instructions)
@@ -212,8 +212,8 @@ static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Regio
             << " trailing bytes at " << format_hex(Summary.TrailingAddress, 0) << '\n';
 }
 
-static Expected<StatsReport> lintRegion(DisassemblerTarget &Target, StringRef Name,
-                                        ArrayRef<uint8_t> Bytes, uint64_t Address) {
+static Expected<StatsReport> lintRegion(const RuleManager &Manager, DisassemblerTarget &Target,
+                                        StringRef Name, ArrayRef<uint8_t> Bytes, uint64_t Address) {
     Expected<ScannedRegion> Region = ScannedRegion::create(Target, Bytes, Address);
     if (auto E = Region.takeError())
         return E;
@@ -221,9 +221,8 @@ static Expected<StatsReport> lintRegion(DisassemblerTarget &Target, StringRef Na
     const RegionSummary Summary = Region->summary();
     printRegionWarnings(Name, *Region, Summary);
 
-    const ArrayRef<Rule> Rules = rules();
     StatsReport SR;
-    Expected<uint64_t> FindingCount = Region->runRules(Rules, [&](const Finding &F) {
+    Expected<uint64_t> FindingCount = Region->runRules(Manager, [&](const Finding &F) {
         printFinding(Target, Name, F);
         SR.addRuleHit(F.MatchedRule);
     });
@@ -234,7 +233,7 @@ static Expected<StatsReport> lintRegion(DisassemblerTarget &Target, StringRef Na
     return SR;
 }
 
-static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintRaw(const RuleManager &Manager, MemoryBufferRef Buffer) {
     if (opts::Arch == ArchitectureOption::Unspecified)
         return createStringError("--arch is required for raw input");
 
@@ -246,11 +245,11 @@ static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
     if (auto E = Target.takeError())
         return E;
 
-    return lintRegion(*Target, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
+    return lintRegion(Manager, *Target, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
                       opts::BaseAddress);
 }
 
-static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintELF(const RuleManager &Manager, MemoryBufferRef Buffer) {
     Expected<std::unique_ptr<object::ObjectFile>> Object =
         object::ObjectFile::createObjectFile(Buffer);
     if (auto E = Object.takeError())
@@ -294,7 +293,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
 
         HasCode = true;
         Expected<StatsReport> RegionSR =
-            lintRegion(*Target, Name->empty() ? "<unnamed>" : *Name,
+            lintRegion(Manager, *Target, Name->empty() ? "<unnamed>" : *Name,
                        arrayRefFromStringRef(*Contents), Section.getAddress());
         if (auto E = RegionSR.takeError())
             return E;
@@ -308,7 +307,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
     return SR;
 }
 
-static Expected<StatsReport> lintInput() {
+static Expected<StatsReport> lintInput(const RuleManager &Manager) {
     ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer =
         MemoryBuffer::getFile(opts::InputFile, /*IsText=*/false,
                               /*RequiresNullTerminator=*/false);
@@ -327,14 +326,14 @@ static Expected<StatsReport> lintInput() {
         case file_magic::elf_executable:
         case file_magic::elf_shared_object:
         case file_magic::elf_core:
-            return lintELF(Ref);
+            return lintELF(Manager, Ref);
         default:
-            return lintRaw(Ref);
+            return lintRaw(Manager, Ref);
         }
     case InputFormat::Elf:
-        return lintELF(Ref);
+        return lintELF(Manager, Ref);
     case InputFormat::Raw:
-        return lintRaw(Ref);
+        return lintRaw(Manager, Ref);
     }
 }
 
@@ -348,9 +347,10 @@ int main(int argc, char **argv) {
     if (!validateOptions())
         return 2;
 
+    RuleManager Manager;
     if (opts::ListChecks) {
-        for (const auto &R : rules())
-            outs() << R.Id << ": " << R.Description << '\n';
+        for (const auto &R : Manager.rules())
+            outs() << R.getID() << ": " << R.getDescription() << '\n';
         return 0;
     }
 
@@ -358,11 +358,11 @@ int main(int argc, char **argv) {
     LLVMInitializeLoongArchTargetMC();
     LLVMInitializeLoongArchDisassembler();
 
-    Expected<StatsReport> SR = lintInput();
+    Expected<StatsReport> SR = lintInput(Manager);
     if (auto E = SR.takeError()) {
         printError(toString(std::move(E)));
         return 2;
     }
-    SR->report(outs());
+    SR->report(Manager, outs());
     return SR->hasFindings() ? 1 : 0;
 }

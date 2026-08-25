@@ -100,15 +100,14 @@ void ScannedRegion::forEachGap(GapHandler HandleGap) const {
         EmitGap(*GapBegin, GapEnd);
 }
 
-Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
+Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
                                            FindingHandler HandleFinding) const {
-    if (Rules.empty())
+    const unsigned MaxInstructionCount = Manager.maxInstructionCount();
+    if (MaxInstructionCount == 0)
         return 0;
 
-    const unsigned MaxInstCount = maxInstCount(Rules);
-
     SmallVector<Instruction> Window;
-    Window.reserve(MaxInstCount);
+    Window.reserve(MaxInstructionCount);
 
     uint64_t FindingCount = 0;
     size_t NextWord = 0;
@@ -119,7 +118,7 @@ Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
             continue;
         }
 
-        while (Window.size() < MaxInstCount && NextWord < WordCount) {
+        while (Window.size() < MaxInstructionCount && NextWord < WordCount) {
             const unsigned NextBit = static_cast<unsigned>(NextWord);
             if (OpaqueWords.test(NextBit) || (!Window.empty() && Boundaries.test(NextBit)))
                 break;
@@ -139,16 +138,7 @@ Expected<uint64_t> ScannedRegion::runRules(ArrayRef<Rule> Rules,
         assert(!Window.empty() && Window.front().Address == Address + StartWord * 4 &&
                "bounded instruction window lost synchronization");
 
-        for (const auto &R : Rules) {
-            if (R.InstructionCount > Window.size())
-                continue;
-
-            ArrayRef<Instruction> Instructions(Window.data(), R.InstructionCount);
-            if (std::optional<RuleMatch> Match = R.Run(Instructions, {Target.Arch, *Target.MIA})) {
-                HandleFinding({R, Instructions, *Match});
-                ++FindingCount;
-            }
-        }
+        FindingCount += Manager.runWindow(Window, {Target.Arch, *Target.MIA}, HandleFinding);
 
         Window.erase(Window.begin());
     }
