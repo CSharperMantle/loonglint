@@ -43,41 +43,42 @@ std::optional<Rule::Match> ShiftDoubleRule::match(ArrayRef<Instruction> Instruct
         const int64_t MaxShift = IsD ? 63 : 31;
 
         // Form 1: ADD rd, rj, rj ; SLLI rd, rd, Shamt  ->  SLLI rd, rj, Shamt+1
-        {
+        do {
             Reg AddRdReg, AddRjReg, AddRkReg;
-            if (matchInst(F, AddOp, AddRdReg, AddRjReg, AddRjReg)) {
-                const MCRegister AddRd = AddRdReg.get();
-                const MCRegister AddRj = AddRjReg.get();
-                Imm ShamtImm;
-                if (matchInst(S, SlliOp, AddRdReg, AddRdReg, ShamtImm)) {
-                    const int64_t Shamt = ShamtImm.get();
-                    if (Shamt >= 1 && Shamt + 1 <= MaxShift) {
-                        Rule::Match Result;
-                        Result.Replacement.emplace_back(
-                            MCInstBuilder(SlliOp).addReg(AddRd).addReg(AddRj).addImm(Shamt + 1));
-                        return Result;
-                    }
-                }
-            }
-        }
+            if (!matchInst(F, AddOp, AddRdReg, AddRjReg, AddRjReg))
+                break;
+            const MCRegister AddRd = AddRdReg.get();
+            const MCRegister AddRj = AddRjReg.get();
+            Imm ShamtImm;
+            if (!matchInst(S, SlliOp, AddRdReg, AddRdReg, ShamtImm))
+                break;
+            const int64_t Shamt = ShamtImm.get();
+            if (Shamt < 1 || Shamt + 1 > MaxShift)
+                break;
+            Rule::Match Result;
+            Result.Replacement.emplace_back(
+                MCInstBuilder(SlliOp).addReg(AddRd).addReg(AddRj).addImm(Shamt + 1));
+            return Result;
+        } while (0);
 
         // Form 2: SLLI rd, rj, Shamt ; ADD rd, rd, rd  ->  SLLI rd, rj, Shamt+1
-        {
+        do {
             Reg SlliRdReg, SlliRjReg;
             Imm ShamtImm;
-            if (matchInst(F, SlliOp, SlliRdReg, SlliRjReg, ShamtImm)) {
-                const MCRegister SlliRd = SlliRdReg.get();
-                const MCRegister SlliRj = SlliRjReg.get();
-                const int64_t Shamt = ShamtImm.get();
-                if (matchInst(S, AddOp, SlliRdReg, SlliRdReg, SlliRdReg) && Shamt >= 1 &&
-                    Shamt + 1 <= MaxShift) {
-                    Rule::Match Result;
-                    Result.Replacement.emplace_back(
-                        MCInstBuilder(SlliOp).addReg(SlliRd).addReg(SlliRj).addImm(Shamt + 1));
-                    return Result;
-                }
-            }
-        }
+            if (!matchInst(F, SlliOp, SlliRdReg, SlliRjReg, ShamtImm))
+                break;
+            const MCRegister SlliRd = SlliRdReg.get();
+            const MCRegister SlliRj = SlliRjReg.get();
+            const int64_t Shamt = ShamtImm.get();
+            if (!matchInst(S, AddOp, SlliRdReg, SlliRdReg, SlliRdReg))
+                break;
+            if (Shamt < 1 || Shamt + 1 > MaxShift)
+                break;
+            Rule::Match Result;
+            Result.Replacement.emplace_back(
+                MCInstBuilder(SlliOp).addReg(SlliRd).addReg(SlliRj).addImm(Shamt + 1));
+            return Result;
+        } while (0);
     }
 
     return std::nullopt;

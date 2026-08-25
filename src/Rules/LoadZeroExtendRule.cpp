@@ -62,12 +62,12 @@ std::optional<Rule::Match> LoadZeroExtendRule::match(ArrayRef<Instruction> Instr
         const int64_t Si12 = Si12Imm.get();
 
         // BSTRPICK rd, rd, Msb, 0 : extracts the loaded low field.
-        if (matchInst(S, PickOp, LdRdReg, LdRdReg, Imm(Msb), Imm(0))) {
-            Rule::Match Result;
-            Result.Replacement.emplace_back(
-                MCInstBuilder(UnsOp).addReg(LdRd).addReg(LdRj).addImm(Si12));
-            return Result;
-        }
+        if (!matchInst(S, PickOp, LdRdReg, LdRdReg, Imm(Msb), Imm(0)))
+            continue;
+        Rule::Match Result;
+        Result.Replacement.emplace_back(
+            MCInstBuilder(UnsOp).addReg(LdRd).addReg(LdRj).addImm(Si12));
+        return Result;
     }
 
     return std::nullopt;
