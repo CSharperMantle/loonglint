@@ -54,12 +54,12 @@ uint64_t RuleManager::runWindow(ArrayRef<Instruction> Window, FindingHandler Han
 void RuleManager::registerRule(std::unique_ptr<Rule> NewRule) {
     LLVM_DEBUG({
         assert(NewRule && "cannot register a null rule");
-        const StringRef Id = NewRule->getID();
-        assert(!Id.empty() && "cannot register a rule without an ID");
+        const StringRef ID = NewRule->getID();
+        assert(!ID.empty() && "cannot register a rule without an ID");
         assert(NewRule->getInstructionCount() != 0 && "rule has zero instruction count");
 
         for (const auto &ExistingRule : rules())
-            assert(ExistingRule.getID() != Id && "duplicate rule ID");
+            assert(ExistingRule.getID() != ID && "duplicate rule ID");
     });
 
     Rules.emplace_back(std::move(NewRule));

@@ -100,9 +100,9 @@ class StatsReport {
     void report(raw_ostream &Output) const {
         SmallVector<std::tuple<StringRef, uint64_t>> RankedRuleHits;
         RankedRuleHits.reserve(RuleHits.size());
-        for (const auto &Id : RuleOrder)
-            if (const uint64_t Hits = RuleHits.lookup(Id))
-                RankedRuleHits.emplace_back(Id, Hits);
+        for (const auto &ID : RuleOrder)
+            if (const uint64_t Hits = RuleHits.lookup(ID))
+                RankedRuleHits.emplace_back(ID, Hits);
 
         stable_sort(RankedRuleHits, [](const auto &LHS, const auto &RHS) {
             return std::get<1>(LHS) > std::get<1>(RHS);
@@ -114,9 +114,9 @@ class StatsReport {
                 : 1;
 
         Output << Findings << " finding(s)\n";
-        for (const auto &[Id, Hits] : RankedRuleHits) {
+        for (const auto &[ID, Hits] : RankedRuleHits) {
             const std::string HitText = utostr(Hits);
-            Output << '\t' << right_justify(HitText, HitWidth) << '\t' << Id << '\n';
+            Output << '\t' << right_justify(HitText, HitWidth) << '\t' << ID << '\n';
         }
 
         if (SkippedWords || TrailingBytes) {
