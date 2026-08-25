@@ -17,9 +17,12 @@ namespace loonglint {
 
 class Rule {
   public:
-    struct Context {
+    class Context {
+      public:
         Architecture Arch;
         const llvm::MCInstrAnalysis &MIA;
+
+        explicit Context(const DisassemblerTarget &DT) : Arch(DT.Arch), MIA(*DT.MIA) {}
     };
 
     struct Match {

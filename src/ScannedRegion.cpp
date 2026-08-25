@@ -18,16 +18,16 @@ using namespace llvm;
 
 namespace loonglint {
 
-ScannedRegion::ScannedRegion(const DisassemblerTarget &Target, ArrayRef<uint8_t> Bytes,
+ScannedRegion::ScannedRegion(const DisassemblerTarget &DT, ArrayRef<uint8_t> Bytes,
                              uint64_t Address, size_t WordCount, uint64_t TrailingBytes)
-    : Target(Target), Bytes(Bytes), Address(Address), WordCount(WordCount),
+    : DT(DT), Bytes(Bytes), Address(Address), WordCount(WordCount),
       Boundaries(static_cast<unsigned>(WordCount + 1)), TrailingBytes(TrailingBytes) {
     Boundaries.set(0);
     Boundaries.set(static_cast<unsigned>(WordCount));
 }
 
-Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &Target,
-                                              ArrayRef<uint8_t> Bytes, uint64_t Address) {
+Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, ArrayRef<uint8_t> Bytes,
+                                              uint64_t Address) {
     if (Bytes.size() > std::numeric_limits<uint64_t>::max() - Address)
         return createStringError("decode address range overflows");
 
@@ -36,15 +36,15 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &Target,
     if (WordCount > static_cast<size_t>(std::numeric_limits<unsigned>::max() - 1U))
         return createStringError("region contains too many instruction words");
 
-    ScannedRegion Region(Target, Bytes, Address, WordCount, Bytes.size() - FullSize);
+    ScannedRegion Region(DT, Bytes, Address, WordCount, Bytes.size() - FullSize);
     const uint64_t EndAddress = Address + FullSize;
-    MCInstrAnalysis &MIA = *Target.MIA;
+    MCInstrAnalysis &MIA = *DT.MIA;
     MIA.resetState();
 
     for (size_t WordIndex = 0; WordIndex < WordCount; ++WordIndex) {
         const size_t Offset = WordIndex * 4;
         const uint64_t InstAddress = Address + Offset;
-        std::optional<MCInst> Inst = Target.decodeInst(Bytes.slice(Offset, 4), InstAddress);
+        std::optional<MCInst> Inst = DT.decodeInst(Bytes.slice(Offset, 4), InstAddress);
         if (!Inst) {
             Region.OpaqueWords.set(static_cast<unsigned>(WordIndex));
             MIA.resetState();
@@ -66,7 +66,7 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &Target,
         if (IsCall || IsTerminator)
             Region.Boundaries.set(static_cast<unsigned>(WordIndex + 1));
 
-        MIA.updateState(*Inst, Target.MSTI.get(), InstAddress);
+        MIA.updateState(*Inst, DT.MSTI.get(), InstAddress);
     }
 
     MIA.resetState();
@@ -125,8 +125,7 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
 
             const size_t Offset = NextWord * 4;
             const uint64_t InstructionAddress = Address + Offset;
-            std::optional<MCInst> Inst =
-                Target.decodeInst(Bytes.slice(Offset, 4), InstructionAddress);
+            std::optional<MCInst> Inst = DT.decodeInst(Bytes.slice(Offset, 4), InstructionAddress);
             if (!Inst)
                 return createStringError("instruction at 0x%llx became undecodable",
                                          static_cast<unsigned long long>(InstructionAddress));

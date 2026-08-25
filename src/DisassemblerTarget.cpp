@@ -49,12 +49,12 @@ Expected<DisassemblerTarget> DisassemblerTarget::create(Architecture TheArchitec
         return createStringError("cannot initialize MCInstrAnalysis");
 
     const unsigned AsmPrinterVariant = DT.MAI->getAssemblerDialect();
-    DT.Printer.reset(
+    DT.InstPrinter.reset(
         TheTarget->createMCInstPrinter(TheTriple, AsmPrinterVariant, *DT.MAI, *DT.MII, *DT.MRI));
-    if (!DT.Printer)
+    if (!DT.InstPrinter)
         return createStringError("cannot initialize MCInstPrinter");
-    DT.Printer->setPrintBranchImmAsAddress(true);
-    DT.Printer->setMCInstrAnalysis(DT.MIA.get());
+    DT.InstPrinter->setPrintBranchImmAsAddress(true);
+    DT.InstPrinter->setMCInstrAnalysis(DT.MIA.get());
 
     DT.Disasm.reset(TheTarget->createMCDisassembler(*DT.MSTI, *DT.Ctx));
     if (!DT.Disasm)
@@ -82,11 +82,11 @@ void DisassemblerTarget::setABIVersion(unsigned Version) {
 }
 
 void DisassemblerTarget::setUseColor(bool UseColor) {
-    Printer->setUseColor(UseColor);
+    InstPrinter->setUseColor(UseColor);
 }
 
 void DisassemblerTarget::printInst(const MCInst &MI, uint64_t Address, raw_ostream &Output) const {
-    Printer->printInst(&MI, Address, "", *MSTI, Output);
+    InstPrinter->printInst(&MI, Address, "", *MSTI, Output);
 }
 
 } // namespace loonglint

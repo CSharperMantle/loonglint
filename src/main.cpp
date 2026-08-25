@@ -164,29 +164,28 @@ static bool validateOptions() {
     return true;
 }
 
-static void printInstruction(DisassemblerTarget &Target, FindingLineKind Kind, uint64_t Address,
+static void printInstruction(DisassemblerTarget &DT, FindingLineKind Kind, uint64_t Address,
                              const MCInst &Inst) {
     switch (Kind) {
     case FindingLineKind::Removed: {
         WithColor LineColor(outs(), raw_ostream::RED);
-        Target.setUseColor(LineColor.colorsEnabled());
+        DT.setUseColor(LineColor.colorsEnabled());
         LineColor << "\t- " << format_hex(Address, 10);
-        Target.printInst(Inst, Address, LineColor);
+        DT.printInst(Inst, Address, LineColor);
         break;
     }
     case FindingLineKind::Added: {
         WithColor LineColor(outs(), raw_ostream::GREEN);
-        Target.setUseColor(LineColor.colorsEnabled());
+        DT.setUseColor(LineColor.colorsEnabled());
         LineColor << "\t+ " << format_hex(Address, 10);
-        Target.printInst(Inst, Address, LineColor);
+        DT.printInst(Inst, Address, LineColor);
         break;
     }
     }
     outs() << '\n';
 }
 
-static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
-                         const Finding &TheFinding) {
+static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Finding &TheFinding) {
     const uint64_t Address = TheFinding.Instructions.front().Address;
     WithColor(outs(), raw_ostream::WHITE)
         << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
@@ -195,9 +194,9 @@ static void printFinding(DisassemblerTarget &Target, StringRef RegionName,
     outs() << '\n';
 
     for (const auto &I : TheFinding.Instructions)
-        printInstruction(Target, FindingLineKind::Removed, I.Address, I.Inst);
+        printInstruction(DT, FindingLineKind::Removed, I.Address, I.Inst);
     for (const auto &[II, MI] : enumerate(TheFinding.Match.Replacement))
-        printInstruction(Target, FindingLineKind::Added, Address + 4 * II, MI);
+        printInstruction(DT, FindingLineKind::Added, Address + 4 * II, MI);
 
     outs() << '\n';
 }
@@ -216,9 +215,9 @@ static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Regio
             << " trailing bytes at " << format_hex(Summary.TrailingAddress, 0) << '\n';
 }
 
-static Expected<StatsReport> lintRegion(const RuleManager &Manager, DisassemblerTarget &Target,
+static Expected<StatsReport> lintRegion(const RuleManager &Manager, DisassemblerTarget &DT,
                                         StringRef Name, ArrayRef<uint8_t> Bytes, uint64_t Address) {
-    Expected<ScannedRegion> Region = ScannedRegion::create(Target, Bytes, Address);
+    Expected<ScannedRegion> Region = ScannedRegion::create(DT, Bytes, Address);
     if (auto E = Region.takeError())
         return E;
 
@@ -227,7 +226,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
     StatsReport SR(Manager);
     Expected<uint64_t> FindingCount = Region->runRules(Manager, [&](const Finding &F) {
-        printFinding(Target, Name, F);
+        printFinding(DT, Name, F);
         SR.addRuleHit(F.MatchedRule);
     });
     if (auto E = FindingCount.takeError())
@@ -245,12 +244,12 @@ static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
                                              ? Architecture::LoongArch32
                                              : Architecture::LoongArch64;
 
-    Expected<DisassemblerTarget> Target = DisassemblerTarget::create(TheArchitecture);
-    if (auto E = Target.takeError())
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(TheArchitecture);
+    if (auto E = DT.takeError())
         return E;
 
-    RuleManager Manager(*Target);
-    return lintRegion(Manager, *Target, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
+    RuleManager Manager(*DT);
+    return lintRegion(Manager, *DT, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
                       opts::BaseAddress);
 }
 
@@ -274,14 +273,14 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
 
-    Expected<DisassemblerTarget> Target = DisassemblerTarget::create(
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(
         TheELF->is64Bit() ? Architecture::LoongArch64 : Architecture::LoongArch32);
-    if (auto E = Target.takeError())
+    if (auto E = DT.takeError())
         return E;
 
-    Target->setABIVersion(TheELF->getEIdentABIVersion());
+    DT->setABIVersion(TheELF->getEIdentABIVersion());
 
-    RuleManager Manager(*Target);
+    RuleManager Manager(*DT);
     StatsReport SR(Manager);
     bool HasCode = false;
     for (const auto &Section : Object->get()->sections()) {
@@ -299,7 +298,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
 
         HasCode = true;
         Expected<StatsReport> RegionSR =
-            lintRegion(Manager, *Target, Name->empty() ? "<unnamed>" : *Name,
+            lintRegion(Manager, *DT, Name->empty() ? "<unnamed>" : *Name,
                        arrayRefFromStringRef(*Contents), Section.getAddress());
         if (auto E = RegionSR.takeError())
             return E;

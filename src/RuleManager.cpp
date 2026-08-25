@@ -20,7 +20,7 @@ using namespace llvm;
 
 namespace loonglint {
 
-RuleManager::RuleManager(const DisassemblerTarget &Target) : Target(Target) {
+RuleManager::RuleManager(const DisassemblerTarget &DT) : DT(DT) {
     registerRule(std::make_unique<SelfMoveRule>());
     registerRule(std::make_unique<BranchToNextRule>());
 }
@@ -33,7 +33,7 @@ unsigned RuleManager::maxInstructionCount() const {
 }
 
 uint64_t RuleManager::runWindow(ArrayRef<Instruction> Window, FindingHandler HandleFinding) const {
-    const Rule::Context Ctx{Target.Arch, *Target.MIA};
+    const Rule::Context Ctx(DT);
     uint64_t FindingCount = 0;
     for (const auto &R : rules()) {
         const unsigned InstructionCount = R.getInstructionCount();

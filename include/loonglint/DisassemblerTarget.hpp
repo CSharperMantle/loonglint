@@ -41,6 +41,7 @@ class DisassemblerTarget {
   private:
     friend class ScannedRegion;
     friend class RuleManager;
+    friend class Rule;
 
     explicit DisassemblerTarget(Architecture Arch) : Arch(Arch) {}
 
@@ -53,7 +54,7 @@ class DisassemblerTarget {
     std::unique_ptr<llvm::MCSubtargetInfo> MSTI;
     std::unique_ptr<llvm::MCContext> Ctx;
     std::unique_ptr<llvm::MCInstrAnalysis> MIA;
-    std::unique_ptr<llvm::MCInstPrinter> Printer;
+    std::unique_ptr<llvm::MCInstPrinter> InstPrinter;
     std::unique_ptr<llvm::MCDisassembler> Disasm;
 };
 

@@ -25,7 +25,7 @@ using FindingHandler = llvm::function_ref<void(const Finding &)>;
 
 class RuleManager final {
   public:
-    explicit RuleManager(const DisassemblerTarget &Target);
+    explicit RuleManager(const DisassemblerTarget &DT);
 
     auto rules() const {
         return llvm::make_pointee_range(Rules);
@@ -38,7 +38,7 @@ class RuleManager final {
   private:
     void registerRule(std::unique_ptr<Rule> NewRule);
 
-    const DisassemblerTarget &Target;
+    const DisassemblerTarget &DT;
     llvm::SmallVector<std::unique_ptr<Rule>, 0> Rules;
 };
 

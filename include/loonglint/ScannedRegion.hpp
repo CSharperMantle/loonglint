@@ -28,7 +28,7 @@ struct RegionSummary {
 
 class ScannedRegion {
   public:
-    static llvm::Expected<ScannedRegion> create(const DisassemblerTarget &Target,
+    static llvm::Expected<ScannedRegion> create(const DisassemblerTarget &DT,
                                                 llvm::ArrayRef<uint8_t> Bytes, uint64_t Address);
 
     llvm::Expected<uint64_t> runRules(const RuleManager &Manager,
@@ -38,10 +38,10 @@ class ScannedRegion {
     void forEachGap(GapHandler HandleGap) const;
 
   private:
-    ScannedRegion(const DisassemblerTarget &Target, llvm::ArrayRef<uint8_t> Bytes, uint64_t Address,
+    ScannedRegion(const DisassemblerTarget &DT, llvm::ArrayRef<uint8_t> Bytes, uint64_t Address,
                   size_t WordCount, uint64_t TrailingBytes);
 
-    const DisassemblerTarget &Target;
+    const DisassemblerTarget &DT;
     llvm::ArrayRef<uint8_t> Bytes;
     uint64_t Address;
     size_t WordCount;
