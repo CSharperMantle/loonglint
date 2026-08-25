@@ -4,6 +4,7 @@
 
 #include "loonglint/Rules/BranchToNextRule.hpp"
 #include "loonglint/Rules/SelfMoveRule.hpp"
+#include "loonglint/Rules/ShiftAddAlslDRule.hpp"
 
 #include "llvm/Support/Debug.h"
 
@@ -23,6 +24,7 @@ namespace loonglint {
 RuleManager::RuleManager(const DisassemblerTarget &DT) : DT(DT) {
     registerRule(std::make_unique<SelfMoveRule>());
     registerRule(std::make_unique<BranchToNextRule>());
+    registerRule(std::make_unique<ShiftAddAlslDRule>());
 }
 
 unsigned RuleManager::maxInstructionCount() const {

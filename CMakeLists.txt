@@ -32,6 +32,7 @@ add_llvm_tool(loonglint
   src/RuleManager.cpp
   src/Rules/BranchToNextRule.cpp
   src/Rules/SelfMoveRule.cpp
+  src/Rules/ShiftAddAlslDRule.cpp
   src/ScannedRegion.cpp
 )
 

@@ -3,6 +3,8 @@
         "loonglint",
         "disasm",
         "MSTI",
+        "shamt",
+        "alsl",
     ],
     "files.associations": {
       "*.py.in": "python",
