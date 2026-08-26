@@ -1,0 +1,28 @@
+[project]
+name = "loonglint_script"
+version = "0.1.0"
+authors = [
+    { name = "Rong Bao", email = "rong.bao@csmantle.top" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "construct>=2.10.70",
+    "pyelftools>=0.33",
+    "typer>=0.27.1",
+]
+
+[tool.uv.sources]
+
+[[tool.uv.index]]
+name = "loong64"
+url = "https://mirrors.loong64.com/pypi/simple"
+explicit = true
+
+[tool.ruff]
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "construct-typing>=0.8.1",
+    "ruff>=0.16.4",
+]
