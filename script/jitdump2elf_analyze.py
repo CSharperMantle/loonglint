@@ -5,22 +5,34 @@ from typing import Annotated
 
 import typer
 
-# Rule sets: forced (N/A) rules vs. actionable ones. The reason strings are
-# shown in the N/A section.
+# Rules fully forced (N/A): branch relaxation artifacts.
 FORCED = {
     "control/degenerate-branch": "branch relaxation",
     "control/branch-to-next": "branch relaxation",
-    "integer/nop": "ma_liPatchable reloc slot",
-    "integer/nop-la32": "ma_liPatchable reloc slot",
-    "integer/nop-la64": "ma_liPatchable reloc slot",
 }
+# NOP-shaped rules whose findings may be ma_liPatchable low-12-bit slots.
+NOP_RULES = {"integer/nop", "integer/nop-la32", "integer/nop-la64"}
 TIERS = ["Ion", "Baseline", "Trampoline", "Interpreter", "Other"]
 
 # loonglint finding line: `file:section:0xaddr: description [rule]`
 # The section name is the sanitized PerfSpewer name and may itself contain
 # ':' (jitdump2elf.py keeps ':' in its allowed set), so anchor on the ':0x'
 # that precedes the address rather than splitting on every ':'.
-RE_FINDING = re.compile(r"^.+?:(.+?):0x([0-9a-f]+): .+ \[([^\]]+)\]")
+RE_FINDING = re.compile(r"^.+?:(.+?):0x[0-9a-f]+: .+ \[([^\]]+)\]")
+
+# Removed-instruction line inside a finding block.
+RE_REMOVED = re.compile(r"^\t- 0x[0-9a-f]+\t(\S+)(?:\t(.*))?$")
+
+
+def is_li_slot(mnemonic: str | None, operands: str | None) -> bool:
+    """True if the instruction is the `ori Rd, Rd, 0` low-12-bit slot that
+    loong64 ma_liPatchable emits (lu12i.w + ori + lu32i.d [+ lu52i.d]); the
+    ori must stay so the JIT patcher can rewrite the low 12 bits."""
+    if mnemonic != "ori":
+        return False
+    parts = [p.strip() for p in (operands or "").split(",")]
+    return len(parts) == 3 and parts[0] == parts[1] and parts[2] == "0"
+
 
 # Tier prefixes as they appear in the section name. jitdump2elf.py keeps ':'
 # in its allowed character set, so the PerfSpewer prefixes survive verbatim.
@@ -57,24 +69,36 @@ def main(
     ],
 ) -> None:
     type_tier: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    li_slots: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    pending: tuple[str, str] | None = None  # (rule, tier) awaiting its removed line
     with open(findings, errors="replace") as f:
         for line in f:
             m = RE_FINDING.match(line)
-            if not m:
+            if m:
+                section, rule = m.group(1), m.group(2)
+                tier = next((t for t, ps in _TIER_PREFIXES if section.startswith(ps)), "Other")
+                type_tier[rule][tier] += 1
+                pending = (rule, tier)
                 continue
-            section, _addr, rule = m.group(1), int(m.group(2), 16), m.group(3)
-            tier = next((t for t, ps in _TIER_PREFIXES if section.startswith(ps)), "Other")
-            type_tier[rule][tier] += 1
+            if pending and (m := RE_REMOVED.match(line)):
+                rule, tier = pending
+                pending = None
+                if rule in NOP_RULES and is_li_slot(m.group(1), m.group(2)):
+                    li_slots[rule][tier] += 1
 
     print("== Rule x Tier ==")
     show(sorted(type_tier.items(), key=lambda kv: -sum(kv[1].values())))
 
     print()
     print("== Actionable items ==")
-    actionable = sorted(
-        ((r, c) for r, c in type_tier.items() if r not in FORCED),
-        key=lambda kv: -sum(kv[1].values()),
-    )
+    actionable: list[tuple[str, Counter[str]]] = []
+    for rule, ct in type_tier.items():
+        if rule in FORCED:
+            continue
+        remaining = ct - li_slots[rule]
+        if sum(remaining.values()):
+            actionable.append((rule, remaining))
+    actionable.sort(key=lambda kv: -sum(kv[1].values()))
     show(actionable)
     print()
     print(f"\tTotal actionable: {sum(sum(c.values()) for _, c in actionable)}")
