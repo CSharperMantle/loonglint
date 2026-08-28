@@ -447,6 +447,15 @@ def main(
             help="Drop objects having these name prefixes",
         ),
     ] = None,
+    max_sections: Annotated[
+        int,
+        typer.Option(
+            "--max-sections",
+            min=1,
+            max=65534,
+            help="Split output into chunks of at most this many sections",
+        ),
+    ] = 65534,
 ) -> None:
     data = dump.read_bytes()
     objects = parse_jitdump(data)
@@ -467,13 +476,22 @@ def main(
         typer.echo("no objects after filtering", err=True)
         raise typer.Exit(code=1)
 
-    write_elf(sections, str(output))
-
     total = sum(len(c) for _, _, c in sections)
-    typer.echo(f"{len(sections)} code objects, {total} code bytes -> {output}", err=True)
+    typer.echo(f"{len(sections)} code objects, {total} code bytes", err=True)
     typer.echo("tier breakdown:", err=True)
     for tier, count in sorted(tiers.items(), key=lambda kv: -kv[1]):
         typer.echo(f"\t{tier}\t{count}", err=True)
+
+    stem = output.stem
+    suffix = output.suffix
+    chunks = [sections[i : i + max_sections] for i in range(0, len(sections), max_sections)]
+    for i, chunk in enumerate(chunks):
+        if len(chunks) == 1:
+            path = output
+        else:
+            path = output.with_name(f"{stem}.{i:03d}{suffix}")
+        write_elf(chunk, str(path))
+        typer.echo(f"chunk {i}: {len(chunk)} objects -> {path}", err=True)
 
 
 if __name__ == "__main__":
