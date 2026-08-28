@@ -42,14 +42,14 @@ std::optional<Rule::Match> LoadExtendRule::match(ArrayRef<Instruction> Instructi
     // LD.B + EXT.W.B  ->  LD.B
     {
         Reg LdRdReg;
-        if (matchInst(F, LoongArch::LD_B, LdRdReg, Skip(), Skip()) &&
+        if (matchInst(F, LoongArch::LD_B, LdRdReg, Reg(), Imm()) &&
             matchInst(S, LoongArch::EXT_W_B, LdRdReg, LdRdReg))
             return DeleteExtension();
     }
     // LD.H + EXT.W.H  ->  LD.H
     {
         Reg LdRdReg;
-        if (matchInst(F, LoongArch::LD_H, LdRdReg, Skip(), Skip()) &&
+        if (matchInst(F, LoongArch::LD_H, LdRdReg, Reg(), Imm()) &&
             matchInst(S, LoongArch::EXT_W_H, LdRdReg, LdRdReg))
             return DeleteExtension();
     }

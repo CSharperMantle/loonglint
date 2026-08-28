@@ -53,7 +53,7 @@ std::optional<Rule::Match> DegenerateBranchRule::match(ArrayRef<Instruction> Ins
     if (Op == LoongArch::BEQ || Op == LoongArch::BNE || Op == LoongArch::BLT ||
         Op == LoongArch::BGE || Op == LoongArch::BLTU || Op == LoongArch::BGEU) {
         Reg BranchReg;
-        if (!matchInst(I, Op, BranchReg, BranchReg, Skip()))
+        if (!matchInst(I, Op, BranchReg, BranchReg, Imm()))
             return std::nullopt;
 
         // Equal-or-greater comparisons on r,r are always true -> direct B.
@@ -71,7 +71,7 @@ std::optional<Rule::Match> DegenerateBranchRule::match(ArrayRef<Instruction> Ins
 
     // Zero-register branches: BEQZ/BNEZ on $zero.
     if (Op == LoongArch::BEQZ || Op == LoongArch::BNEZ) {
-        if (!matchInst(I, Op, Reg(LoongArch::R0), Skip()))
+        if (!matchInst(I, Op, Reg(LoongArch::R0), Imm()))
             return std::nullopt;
 
         if (Op == LoongArch::BNEZ)
