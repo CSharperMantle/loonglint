@@ -35,6 +35,47 @@ std::optional<Rule::Match> BitExtractRule::match(ArrayRef<Instruction> Instructi
 
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
+
+    // Mask-first order: ANDI Rd, Rj, (1 << Len) - 1 ; SRLI Rd, Rd, Lsb extracts
+    // GR[Rj][Len-1:Lsb] because the AND already cleared everything above bit
+    // Len-1. SRAI is invalid here: nothing would clear the replicated sign
+    // bits above the field.
+    do {
+        Reg AndiRdReg, AndiRjReg;
+        Imm MaskImm;
+        if (!matchInst(F, LoongArch::ANDI, AndiRdReg, AndiRjReg, MaskImm))
+            break;
+        const MCRegister AndiRd = AndiRdReg.get();
+        const MCRegister AndiRj = AndiRjReg.get();
+        const uint64_t Mask = static_cast<uint64_t>(MaskImm.get());
+
+        if (Mask == 0 || (Mask & (Mask + 1)) != 0) // must be (1 << Len) - 1
+            break;
+        const unsigned Len = static_cast<unsigned>(llvm::countr_one(Mask));
+
+        const unsigned SrOp = S.getOpcode();
+        if (SrOp != LoongArch::SRLI_W && SrOp != LoongArch::SRLI_D)
+            break;
+
+        Imm LsbImm;
+        if (!matchInst(S, SrOp, AndiRdReg, AndiRdReg, LsbImm))
+            break;
+        const int64_t Lsb = LsbImm.get();
+
+        const unsigned Msb = Len - 1;
+        if (Lsb < 1 || Lsb > static_cast<int64_t>(Msb))
+            break;
+
+        const unsigned PickOp =
+            SrOp == LoongArch::SRLI_D ? LoongArch::BSTRPICK_D : LoongArch::BSTRPICK_W;
+
+        Rule::Match Result;
+        Result.Replacement.emplace_back(
+            MCInstBuilder(PickOp).addReg(AndiRd).addReg(AndiRj).addImm(Msb).addImm(
+                static_cast<unsigned>(Lsb)));
+        return Result;
+    } while (0);
+
     const unsigned ShiftOp = F.getOpcode();
 
     bool IsD = false;

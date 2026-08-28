@@ -53,6 +53,7 @@ add_llvm_tool(loonglint
   src/Rules/ShiftChainRule.cpp
   src/Rules/ShiftDoubleRule.cpp
   src/Rules/ShiftMaskRule.cpp
+  src/Rules/UnsignedLoadPickRule.cpp
   src/Rules/ZeroExtendRule.cpp
   src/ScannedRegion.cpp
 )

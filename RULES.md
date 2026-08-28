@@ -113,6 +113,17 @@ bstrpick.d Rd, Rj, Msb, Lsb
 
 # srai.d is accepted in place of srli.d; the low mask removes the
 # replicated sign bits. The word form substitutes .w for .d.
+
+# mask-first order:
+
+andi Rd, Rj, Mask
+srli.[wd] Rd, Rd, Lsb
+# ->
+bstrpick.[wd] Rd, Rj, Msb, Lsb
+
+# here the mask covers the whole field: Msb = Len - 1 where
+# Mask = (1 << Len) - 1, and Len must exceed Lsb. SRAI is not accepted
+# in this order because nothing clears the replicated sign bits.
 ```
 
 ### Constraints
@@ -120,10 +131,11 @@ bstrpick.d Rd, Rj, Msb, Lsb
 `BSTRPICK.D` on LA64; `BSTRPICK.W` on LA32/LA64.
 
 * `Mask = (1 << Len) - 1` must be a nonzero contiguous low-bit mask fitting `ANDI`'s 12-bit unsigned immediate, and
-* `Msb = Lsb + Len - 1`, and
-* `Lsb + Len` must not exceed the selected width.
+* In shift-first order `Msb = Lsb + Len - 1` and `Lsb + Len` must not exceed the selected width, and
+* In mask-first order `Msb = Len - 1` and `Len` must exceed `Lsb`, and
+* `Lsb` must be at least 1 so the pair never overlaps an identity.
 
-Both shift-and-mask forms extract the same low field that `BSTRPICK` extracts directly, with width-specific sign/zero extension.
+Shift-first extracts `Rj[Lsb+Len-1:Lsb]`; mask-first extracts `Rj[Len-1:Lsb]` because the AND has already cleared every bit above the field. Both forms extract the same low field that `BSTRPICK` extracts directly, with width-specific sign/zero extension.
 
 ### Evidence
 
@@ -132,10 +144,10 @@ Both shift-and-mask forms extract the same low field that `BSTRPICK` extracts di
 ## `ZeroExtendRule` (`integer/zero-extend`)
 
 ```asm
-slli.{w,d} Rd, Rj, Shamt
-srli.{w,d} Rd, Rd, Shamt
+slli.[wd] Rd, Rj, Shamt
+srli.[wd] Rd, Rd, Shamt
 # ->
-bstrpick.{w,d} Rd, Rj, Msb, 0
+bstrpick.[wd] Rd, Rj, Msb, 0
 
 # where Msb = width - Shamt - 1
 ```
@@ -204,24 +216,24 @@ A byte-within-halfword reversal composed with a halfword-order reversal is a who
 ## `MulhSextRule` (`integer/mulh-sext`)
 
 ```asm
-mulh.w Rd, Rj, Rk
+mulh.w[u] Rd, Rj, Rk
 addi.w Rd, Rd, 0
 # ->
-mulh.w Rd, Rj, Rk   # delete the extension
+mulh.w[u] Rd, Rj, Rk   # delete the extension
 
 # or
 
-mulh.wu Rd, Rj, Rk
+mulh.w[u] Rd, Rj, Rk
 slli.w Rd, Rd, 0
 # ->
-mulh.wu Rd, Rj, Rk   # delete the extension
+mulh.w[u] Rd, Rj, Rk   # delete the extension
 ```
 
 ### Constraints
 
 LA64 only; on LA32 the same-destination extension is an identity handled by `NopLA32Rule`.
 
-* match only same-destination word sign-extension idioms (`ADDI.W Rd, Rd, 0` or `SLLI.W Rd, Rd, 0`).
+* Match only same-destination word sign-extension idioms (`ADDI.W Rd, Rd, 0` or `SLLI.W Rd, Rd, 0`) after either `MULH.W` or `MULH.WU`.
 
 `MULH.W` and `MULH.WU` already sign-extend their 32-bit high result to the GPR width on LA64, so the following same-destination extension is redundant.
 
@@ -237,7 +249,7 @@ slli.d Rd, Rd, Shamt1
 # ->
 slli.d Rd, Rj, Shamt
 
-# srli.{w,d} compose the same way; srai.{w,d} clamps the combined amount
+# srli.[wd] compose the same way; srai.[wd] clamps the combined amount
 # to the width maximum instead of rejecting overflow. Word forms
 # substitute .w for .d and 31 for 63.
 ```
@@ -315,12 +327,21 @@ Immediate rotations compose modulo the operand width.
 ## `ShiftMaskRule` (`integer/shift-mask`)
 
 ```asm
-andi Rd, CountRj, {31, 63}
-sll.{w,d} Rd, ValueRj, Rd
+andi Rd, CountRj, Mask
+sll.[wd] Rd, ValueRj, Rd
 # ->
-sll.{w,d} Rd, ValueRj, CountRj
+sll.[wd] Rd, ValueRj, CountRj
 
-# the same shape applies to srl.{w,d} and sra.{w,d}
+# the same shape applies to srl.[wd], sra.[wd], and rotr.[wd];
+# any mask keeping every count bit is accepted:
+# (Mask & (Width - 1)) == Width - 1
+
+# or, on LA64, the count producer may be a BSTRPICK.D:
+
+bstrpick.d Rd, CountRj, Msb, 0   # Msb >= 5 for .D shifts, >= 4 for .W shifts
+sll.[wd] Rd, ValueRj, Rd
+# ->
+sll.[wd] Rd, ValueRj, CountRj
 ```
 
 ### Constraints
@@ -328,9 +349,11 @@ sll.{w,d} Rd, ValueRj, CountRj
 `.W` on LA32/LA64; `.D` on LA64.
 
 * The mask destination must be overwritten by the shift, and
-* `ValueRj` must not alias `Rd`, or removing the mask would change the shifted value.
+* `ValueRj` must not alias `Rd`, or removing the mask would change the shifted value, and
+* An `ANDI` count mask must keep every count bit, and
+* A `BSTRPICK.D` count producer must have `lsb` 0 and keep at least the count bits (`Msb + 1 >= log2(Width)`).
 
-LoongArch variable shifts already consume only the low 5 (`.W`) or 6 (`.D`) shift-count bits, so the mask is redundant.
+LoongArch variable shifts already consume only the low 5 (`.W`) or 6 (`.D`) shift-count bits, so any count masking that preserves those bits is redundant.
 
 ### Evidence
 
@@ -586,16 +609,18 @@ ext.w.b Rd, Rd
 # ->
 ld.b Rd, Rj, Si12   # delete the extension
 
-# or ld.h + ext.w.h (LA32/LA64); or ld.w + addi.w Rd, Rd, 0 (LA64 only).
+# or ld.h + ext.w.h (LA32/LA64); ld.w + addi.w Rd, Rd, 0 or
+# slli.w Rd, Rd, 0 (LA64 only); or ldptr.w + addi.w/slli.w
+# Rd, Rd, 0 (LA64 only).
 ```
 
 ### Constraints
 
-`EXT.W.B`/`EXT.W.H` on LA32/LA64; the `LD.W` + `ADDI.W` form on LA64 only (on LA32 the `ADDI.W` is an identity handled by `NopLA32Rule`).
+`EXT.W.B`/`EXT.W.H` on LA32/LA64; the `LD.W` and `LDPTR.W` forms on LA64 only (on LA32 the `ADDI.W`/`SLLI.W`-by-0 identities are handled by `NopLA32Rule`).
 
 * The extension destination must be the load destination.
 
-The signed loads already perform the requested sign extension.
+The signed loads and `LDPTR.W` already perform the requested sign extension.
 
 ### Evidence
 
@@ -605,9 +630,9 @@ The signed loads already perform the requested sign extension.
 
 ```asm
 add.d Rd, Rj, Rk
-ld.{b,h,w,d} Rd, Rd, 0
+ld.* Rd, Rd, 0
 # ->
-ldx.{b,h,w,d} Rd, Rj, Rk
+ldx.* Rd, Rj, Rk
 ```
 
 ### Constraints
@@ -626,12 +651,12 @@ One base-plus-index addition followed by a zero-offset load folds into the index
 ## `LoadZeroExtendRule` (`memory/load-zero-extend`)
 
 ```asm
-ld.{b,h,w} Rd, Rj, Si12
+ld.[bhw] Rd, Rj, Si12
 bstrpick.d Rd, Rd, {7,15,31}, 0
 # ->
 ld.{bu,hu,wu} Rd, Rj, Si12   # LA64
 
-# on LA32, ld.{b,h} + bstrpick.w Rd, Rd, {7,15}, 0 -> ld.{bu,hu}
+# on LA32, ld.[bh] + bstrpick.w Rd, Rd, {7,15}, 0 -> ld.{bu,hu}
 ```
 
 ### Constraints
@@ -645,3 +670,22 @@ Extracting the loaded low field with `BSTRPICK` is exactly what the unsigned loa
 ### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1954-L1959>
+
+## `UnsignedLoadPickRule` (`memory/unsigned-load-pick`)
+
+```asm
+ld.bu Rd, Rj, Si12
+bstrpick.d Rd, Rd, 7, 0  # LA64
+# ->
+ld.bu Rd, Rj, Si12
+
+# On LA32 the pick is bstrpick.w Rd, Rd, {7,15}, 0 after ld.{bu,hu}.
+```
+
+### Constraints
+
+`BSTRPICK.D` picks on LA64; `BSTRPICK.W` picks on LA32. On LA32 `BSTRPICK.W` zero-extends the field across the whole 32-bit GRLEN.
+
+* The `BSTRPICK` must extract exactly the loaded width (`msb` of 7/15/31 with `lsb = 0`) and overwrite the load destination.
+
+An unsigned load already produces the zero-extended field, so a full-width `BSTRPICK` of the same field rewrites the same value and can be deleted.

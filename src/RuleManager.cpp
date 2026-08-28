@@ -25,6 +25,7 @@
 #include "loonglint/Rules/ShiftChainRule.hpp"
 #include "loonglint/Rules/ShiftDoubleRule.hpp"
 #include "loonglint/Rules/ShiftMaskRule.hpp"
+#include "loonglint/Rules/UnsignedLoadPickRule.hpp"
 #include "loonglint/Rules/ZeroExtendRule.hpp"
 
 #include "llvm/Support/Debug.h"
@@ -67,6 +68,7 @@ RuleManager::RuleManager(const DisassemblerTarget &DT) : DT(DT) {
     registerRule(std::make_unique<LoadExtendRule>());
     registerRule(std::make_unique<IndexedLoadRule>());
     registerRule(std::make_unique<LoadZeroExtendRule>());
+    registerRule(std::make_unique<UnsignedLoadPickRule>());
 }
 
 unsigned RuleManager::maxInstructionCount() const {

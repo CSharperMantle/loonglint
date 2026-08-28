@@ -19,7 +19,7 @@ StringRef IndexedLoadRule::getID() const {
 }
 
 StringRef IndexedLoadRule::getDescription() const {
-    return "fold ADD.D and zero-offset LD.[BHWD] into LDX.[BHWD]";
+    return "fold ADD.D and zero-offset LD.* into LDX.*";
 }
 
 unsigned IndexedLoadRule::getInstructionCount() const {
@@ -61,6 +61,9 @@ std::optional<Rule::Match> IndexedLoadRule::match(ArrayRef<Instruction> Instruct
              std::make_tuple(LoongArch::LD_H, LoongArch::LDX_H),
              std::make_tuple(LoongArch::LD_W, LoongArch::LDX_W),
              std::make_tuple(LoongArch::LD_D, LoongArch::LDX_D),
+             std::make_tuple(LoongArch::LD_BU, LoongArch::LDX_BU),
+             std::make_tuple(LoongArch::LD_HU, LoongArch::LDX_HU),
+             std::make_tuple(LoongArch::LD_WU, LoongArch::LDX_WU),
          }) {
         // LD rd, rd, 0 : zero offset, base is the address temporary.
         if (matchInst(S, LdOp, AddRdReg, AddRdReg, Imm(0))) {

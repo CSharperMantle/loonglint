@@ -53,13 +53,21 @@ std::optional<Rule::Match> LoadExtendRule::match(ArrayRef<Instruction> Instructi
             matchInst(S, LoongArch::EXT_W_H, LdRdReg, LdRdReg))
             return DeleteExtension();
     }
-    // LD.W + ADDI.W rd, rd, 0  ->  LD.W  (LA64 only; LA32 leaves it to NopLA32)
-    if (Ctx.Arch == Architecture::LoongArch64) {
-        Reg LdRdReg;
-        if (matchInst(F, LoongArch::LD_W, LdRdReg, Skip(), Skip()) &&
-            matchInst(S, LoongArch::ADDI_W, LdRdReg, LdRdReg, Imm(0)))
+    do {
+        if (Ctx.Arch == Architecture::LoongArch64) {
+            // LD.W/LDPTR.W + ADDI.W/SLLI.W rd, rd, 0  ->  delete the extension. LD.W and LDPTR.W
+            // both sign-extend their word result, so the word-extension idioms are
+            // redundant after them.
+            Reg LdRdReg;
+            if (!(matchInst(F, LoongArch::LD_W, LdRdReg, Reg(), Imm()) ||
+                  (matchInst(F, LoongArch::LDPTR_W, LdRdReg, Reg(), Imm()))))
+                break;
+            if (!(matchInst(S, LoongArch::ADDI_W, LdRdReg, LdRdReg, Imm(0)) ||
+                  matchInst(S, LoongArch::SLLI_W, LdRdReg, LdRdReg, Imm(0))))
+                break;
             return DeleteExtension();
-    }
+        }
+    } while (0);
 
     return std::nullopt;
 }

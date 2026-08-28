@@ -14,3 +14,5 @@ _start:
   addi.w $t1, $t0, 0
   mulh.w $t2, $a0, $a1
   addi.w $t2, $t2, 1
+  mulh.wu $t3, $a0, $a1
+  slli.w $t3, $t3, 1

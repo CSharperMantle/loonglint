@@ -37,25 +37,18 @@ std::optional<Rule::Match> MulhSextRule::match(ArrayRef<Instruction> Instruction
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
 
-    // MULH.W rd, rj, rk ; ADDI.W rd, rd, 0  ->  MULH.W (delete extension).
-    {
-        Reg MulhRdReg;
-        if (matchInst(F, LoongArch::MULH_W, MulhRdReg, Skip(), Skip()) &&
-            matchInst(S, LoongArch::ADDI_W, MulhRdReg, MulhRdReg, Imm(0))) {
-            Rule::Match Result;
-            Result.Replacement.push_back(F);
-            return Result;
-        }
-    }
-
-    // MULH.WU rd, rj, rk ; SLLI.W rd, rd, 0  ->  MULH.WU (delete extension).
-    {
-        Reg MulhRdReg;
-        if (matchInst(F, LoongArch::MULH_WU, MulhRdReg, Skip(), Skip()) &&
-            matchInst(S, LoongArch::SLLI_W, MulhRdReg, MulhRdReg, Imm(0))) {
-            Rule::Match Result;
-            Result.Replacement.push_back(F);
-            return Result;
+    // MULH.W/MULH.WU rd, rj, rk ; ADDI.W/SLLI.W rd, rd, 0  ->  delete the
+    // extension. On LA64 both high multiplies already sign-extend their 32-bit
+    // result, so either word sign-extension idiom after them is redundant.
+    for (const unsigned MulhOp : {LoongArch::MULH_W, LoongArch::MULH_WU}) {
+        for (const unsigned ExtOp : {LoongArch::ADDI_W, LoongArch::SLLI_W}) {
+            Reg MulhRdReg;
+            if (matchInst(F, MulhOp, MulhRdReg, Reg(), Reg()) &&
+                matchInst(S, ExtOp, MulhRdReg, MulhRdReg, Imm(0))) {
+                Rule::Match Result;
+                Result.Replacement.push_back(F);
+                return Result;
+            }
         }
     }
 

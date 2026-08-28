@@ -18,3 +18,9 @@ _start:
   andi   $t3, $t3, 128
   srli.d $t4, $a0, 0
   andi   $t4, $t4, 255
+  andi   $t5, $a0, 255
+  srai.d $t5, $t5, 4
+  andi   $t6, $a0, 15
+  srli.d $t6, $t6, 8
+  andi   $t7, $a0, 5
+  srli.d $t7, $t7, 1

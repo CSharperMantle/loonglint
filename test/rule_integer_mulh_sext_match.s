@@ -5,9 +5,9 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-# CHECK-COUNT-2: [integer/mulh-sext]
-# CHECK: 2 finding(s)
-# CHECK: 2 integer/mulh-sext
+# CHECK-COUNT-4: [integer/mulh-sext]
+# CHECK: 4 finding(s)
+# CHECK: 4 integer/mulh-sext
 
 .text
 .globl _start
@@ -16,3 +16,7 @@ _start:
   addi.w  $t0, $t0, 0
   mulh.wu $t1, $a2, $a3
   slli.w  $t1, $t1, 0
+  mulh.w  $t2, $a4, $a5
+  slli.w  $t2, $t2, 0
+  mulh.wu $t3, $a6, $a7
+  addi.w  $t3, $t3, 0

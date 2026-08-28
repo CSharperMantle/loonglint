@@ -28,7 +28,7 @@ unsigned ShiftMaskRule::getInstructionCount() const {
 }
 
 std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructions,
-                                                const Context &) const {
+                                                const Context &Ctx) const {
     using namespace LowLevelInstMatcherDSL;
 
     assert(Instructions.size() == 2 && "integer/shift-mask requires two instructions");
@@ -36,45 +36,57 @@ std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructio
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
 
-    // ANDI AndiRd, AndiRj, Mask : AndiRd = AndiRj & Mask.
-    Reg AndiRdReg, AndiRjReg;
-    Imm MaskImm;
-    if (!matchInst(F, LoongArch::ANDI, AndiRdReg, AndiRjReg, MaskImm))
-        return std::nullopt;
-    const MCRegister AndiRd = AndiRdReg.get();
-    const MCRegister AndiRj = AndiRjReg.get();
-    const int64_t Mask = MaskImm.get();
-
+    // Variable shifts consume only the low 5 (.W) or 6 (.D) count bits.
     const unsigned Op = S.getOpcode();
     bool IsD = false;
     switch (Op) {
     case LoongArch::SLL_W:
     case LoongArch::SRL_W:
     case LoongArch::SRA_W:
+    case LoongArch::ROTR_W:
         IsD = false;
         break;
     case LoongArch::SLL_D:
     case LoongArch::SRL_D:
     case LoongArch::SRA_D:
+    case LoongArch::ROTR_D:
         IsD = true;
         break;
     default:
         return std::nullopt;
     }
+    const int64_t CountMask = IsD ? 63 : 31;
 
-    if (Mask != (IsD ? 63 : 31))
+    // The count producer is either an ANDI keeping every count bit, or, on
+    // LA64, a BSTRPICK.D with lsb 0 keeping at least the count bits.
+    Reg CountRdReg, CountRjReg;
+    Imm MaskImm;
+    if (matchInst(F, LoongArch::ANDI, CountRdReg, CountRjReg, MaskImm)) {
+        if ((MaskImm.get() & CountMask) != CountMask)
+            return std::nullopt;
+    } else if (Ctx.Arch == Architecture::LoongArch64) {
+        Imm MsbImm;
+        if (!matchInst(F, LoongArch::BSTRPICK_D, CountRdReg, CountRjReg, MsbImm, Imm(0)))
+            return std::nullopt;
+        const int64_t MinMsb = IsD ? 5 : 4;
+        if (MsbImm.get() < MinMsb)
+            return std::nullopt;
+    } else {
         return std::nullopt;
+    }
 
-    // shift AndiRd, ShRj, AndiRd : the mask result is the shift count.
+    // shift CountRd, ShRj, CountRd : the masked value is the shift count.
     Reg ShRjReg;
-    if (!matchInst(S, Op, AndiRdReg, ShRjReg, AndiRdReg))
+    if (!matchInst(S, Op, CountRdReg, ShRjReg, CountRdReg))
         return std::nullopt;
+    const MCRegister CountRd = CountRdReg.get();
     const MCRegister ShRj = ShRjReg.get();
-    if (ShRj == AndiRd)
+    if (ShRj == CountRd)
         return std::nullopt;
 
     Rule::Match Result;
-    Result.Replacement.emplace_back(MCInstBuilder(Op).addReg(AndiRd).addReg(ShRj).addReg(AndiRj));
+    Result.Replacement.emplace_back(
+        MCInstBuilder(Op).addReg(CountRd).addReg(ShRj).addReg(CountRjReg.get()));
     return Result;
 }
 
