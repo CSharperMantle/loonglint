@@ -21,6 +21,17 @@ Note that due to the intrinsic limitation of linear scan, there might be false p
 
 This project is inspired by [gaul/armlint](https://github.com/gaul/armlint). The disassembly and analysis infrastructure is provided by [LLVM](https://llvm.org/). Matching is done by a [BOLT](https://github.com/llvm/llvm-project/blob/main/bolt/README.md)-inspired DSL.
 
+## Optimization showcase
+
+The following is a list of optimization opportunities found with the help of LoongLint. Note that this list is not complete and will be amended from time to time.
+
+### [SpiderMonkey](https://spidermonkey.dev/)
+
+* [Bug 2066681](https://bugzil.la/2066681): Stop generating no-op self addi.d
+* [Bug 2066686](https://bugzil.la/2066686): Fuse or32+not32 into NOR in EmitInitDependentStringBase
+* [Bug 2067472](https://bugzil.la/2067472): Refactor to use a more idiomatic `move`-ing pattern
+* [Bug 2067473](https://bugzil.la/2067473): Optimize BaseIndex-shaped ma_{load,store} with offset == 0 and scale == 1
+
 ## Installation
 
 ### From source
