@@ -34,6 +34,22 @@ def is_li_slot(mnemonic: str | None, operands: str | None) -> bool:
     return len(parts) == 3 and parts[0] == parts[1] and parts[2] == "0"
 
 
+def is_wasm_slow_call_marker(mnemonic: str | None, operands: str | None) -> bool:
+    """True if the instruction is the intentional wasm slow-call marker
+    emitted by MacroAssemblerLOONG64::wasmMarkCallAsSlow(): `mov(ra, ra)`
+    = `ori ra, ra, 0` (SlowCallMarker 0x03800021). wasmCheckSlowCallsite()
+    reads this word at the return address to detect slow-path call_indirect
+    sites, so it must not be removed. Same idiom as riscv64's `mv(ra, ra)`.
+
+    Shape-wise this is a subset of is_li_slot, so it is already filtered in
+    practice; this filter documents the intent and keeps the marker excluded
+    if the li-slot rule is ever tightened."""
+    if mnemonic != "ori":
+        return False
+    parts = [p.strip() for p in (operands or "").split(",")]
+    return len(parts) == 3 and parts[0] == "$ra" == parts[1] and parts[2] == "0"
+
+
 # Tier prefixes as they appear in the section name. jitdump2elf.py keeps ':'
 # in its allowed character set, so the PerfSpewer prefixes survive verbatim.
 _TIER_PREFIXES = (
@@ -83,7 +99,10 @@ def main(
             if pending and (m := RE_REMOVED.match(line)):
                 rule, tier = pending
                 pending = None
-                if rule in NOP_RULES and is_li_slot(m.group(1), m.group(2)):
+                if rule in NOP_RULES and (
+                    is_li_slot(m.group(1), m.group(2))
+                    or is_wasm_slow_call_marker(m.group(1), m.group(2))
+                ):
                     li_slots[rule][tier] += 1
 
     print("== Rule x Tier ==")
