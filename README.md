@@ -1,5 +1,9 @@
 # LoongLint
 
+<p align="center">
+  <img src="assets/icon/loonglint.svg" alt="LoongLint logo" width="256px">
+</p>
+
 LoongLint (also stylized as "loonglint" and "LOONGLINT" in the source code) checks [LoongArch](https://docs.kernel.org/arch/loongarch/introduction.html) binaries for common optimizable peephole patterns.
 
 ## Design
@@ -57,3 +61,5 @@ This program is distributed in the hope that it will be useful, but **WITHOUT AN
 You should have received [a copy](./LICENSE) of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 Some parts of the program are Derivative Works of the LLVM source. Each of such source is indicated by special comment headers. Please see [LICENSE-LLVM](./LICENSE-LLVM) for licensing information of such content.
+
+The [icon](assets/icon/loonglint.svg) for this project ("the LoongLint logo") is a Modified Version of the Noto Emoji Fonts (<https://github.com/googlefonts/noto-emoji>). Noto Emoji Fonts are authored by Google LLC and licensed under the SIL Open Font License Version 1.1. Thus, the LoongLint logo is also licensed under the OFL v1.1. Other files under [assets/icon/](assets/icon/) are the Original Version of Noto Emoji Fonts to preserve provenance.
