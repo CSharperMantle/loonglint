@@ -3,6 +3,7 @@
 #include "loonglint/RuleManager.hpp"
 
 #include "loonglint/Rules/AddiPairRule.hpp"
+#include "loonglint/Rules/AddiSubRule.hpp"
 #include "loonglint/Rules/AddressLoadRule.hpp"
 #include "loonglint/Rules/AndNotRule.hpp"
 #include "loonglint/Rules/BitCountRule.hpp"
@@ -64,6 +65,7 @@ RuleManager::RuleManager(const DisassemblerTarget &DT) : DT(DT) {
     registerRule(std::make_unique<DegenerateBranchRule>());
     registerRule(std::make_unique<ShiftAddAlslDRule>());
     registerRule(std::make_unique<AddiPairRule>());
+    registerRule(std::make_unique<AddiSubRule>());
     registerRule(std::make_unique<AddressLoadRule>());
     registerRule(std::make_unique<LoadExtendRule>());
     registerRule(std::make_unique<IndexedLoadRule>());

@@ -568,6 +568,43 @@ Fixed-width addition is associative modulo the operation width; no memory or con
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1318-L1330>
 
+## `AddiSubRule` (`integer/addi-sub`)
+
+```asm
+addi.d Rd, Rj, Imm
+sub.d  Rd, Rj, Rd
+# ->
+addi.d Rd, $zero, -Imm
+
+# or
+
+addi.d Rd, Rj, Imm
+sub.d  Rd, Rd, Rj
+# ->
+addi.d Rd, $zero, Imm
+
+# on LA32 the .w forms substitute addi.w/sub.w for addi.d/sub.d; the .w pair
+# is also sound on LA64, and a mixed addi.d + sub.w pair folds on LA64 too.
+# when Imm = -2048 the -Imm arm materializes 2048 with ori Rd, $zero, 2048.
+```
+
+### Constraints
+
+`.W` pairs on LA32/LA64; `.D` pairs and the mixed `ADDI.D` + `SUB.W` pair on LA64.
+
+* The `SUB` must overwrite the `ADDI` destination, and
+* `Rd` must not be `$zero` (the `ADDI` write would be discarded and the `SUB` would read 0), and
+* `Rj` must not alias `Rd` (the `SUB` would read the overwritten base), and
+* the `-Imm` arm requires `-Imm` to fit the signed 12-bit range, and `Imm = -2048` is materialized with `ORI Rd, $zero, 2048`, and
+* the `+Imm` arm needs no range check because `Imm` is already an encoded `si12`, and
+* the `ADDI.W` + `SUB.D` mix is rejected: `SUB.D` would subtract the sign-extended 32-bit sum from the full 64-bit base.
+
+`(R + Imm) - R = Imm` and `R - (R + Imm) = -Imm` at the operation width; the `.W` rows hold modulo 2^32, and the replacement sign-extends the folded value back.
+
+### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/CodeGen/SelectionDAG/DAGCombiner.cpp#L4410-L4412>
+
 ## `AddressLoadRule` (`memory/address-load`)
 
 ```asm

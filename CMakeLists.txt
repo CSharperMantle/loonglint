@@ -31,6 +31,7 @@ add_llvm_tool(loonglint
   src/main.cpp
   src/RuleManager.cpp
   src/Rules/AddiPairRule.cpp
+  src/Rules/AddiSubRule.cpp
   src/Rules/AddressLoadRule.cpp
   src/Rules/AndNotRule.cpp
   src/Rules/BitCountRule.cpp
