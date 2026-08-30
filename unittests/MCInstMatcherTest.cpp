@@ -51,13 +51,13 @@ TEST(MCInstMatcherTest, RequiresRepeatedCaptureEquality) {
     EXPECT_EQ(Register.get(), MCRegister(2));
 }
 
-TEST(MCInstMatcherTest, RequiresExactOperandCount) {
+TEST(MCInstMatcherTest, RequiresLessOrEqOperandCount) {
     const MCInst Inst =
         makeInst(7, {MCOperand::createReg(MCRegister(2)), MCOperand::createImm(42)});
 
-    EXPECT_FALSE(matchInst(Inst, 7, Reg()));
+    EXPECT_TRUE(matchInst(Inst, 7, Reg()));
+    EXPECT_TRUE(matchInst(Inst, 7, Reg(), Imm()));
     EXPECT_FALSE(matchInst(Inst, 7, Reg(), Imm(), Skip()));
-    EXPECT_FALSE(matchInst(Inst, 8, Reg(), Imm()));
 }
 
 TEST(MCInstMatcherTest, SkipConsumesAnyOperand) {

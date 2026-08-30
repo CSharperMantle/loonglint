@@ -24,10 +24,21 @@ namespace loonglint {
 
 namespace LowLevelInstMatcherDSL {
 
+/// The base class to match an operand of type T.
+///
+/// The subclasses of OpMatcher are intended to be allocated on the stack and
+/// to only be used by passing them to matchInst() and by calling their get()
+/// function, thus the peculiar `mutable` specifiers: to make the calling code
+/// compact and readable, the templated matchInst() function has to accept both
+/// long-lived Imm/Reg wrappers declared as local variables (intended to capture
+/// the first operand's value and match the subsequent operands, whether inside
+/// a single instruction or across multiple instructions), as well as temporary
+/// wrappers around literal values to match, f.e. Imm(42) or Reg(AArch64::XZR).
 template <typename T> class OpMatcher {
     mutable std::optional<T> Value;
     mutable std::optional<T> SavedValue;
 
+    // Remember/restore the last Value - to be called by matchInst.
     void remember() const {
         SavedValue = Value;
     }
@@ -42,12 +53,16 @@ template <typename T> class OpMatcher {
     explicit OpMatcher(std::optional<T> ValueToMatch) : Value(ValueToMatch) {}
 
     bool matchValue(T OpValue) const {
+        // Check that OpValue does not contradict the existing Value.
         const bool MatchResult = !Value || *Value == OpValue;
+        // If MatchResult is false, all matchers will be reset before returning from
+        // matchInst, including this one, thus no need to assign conditionally.
         Value = OpValue;
         return MatchResult;
     }
 
   public:
+    /// Returns the captured value.
     T get() const {
         assert(Value && "operand matcher has no captured value");
         return *Value;
@@ -90,17 +105,34 @@ class Skip {
     friend bool matchInst(const llvm::MCInst &, unsigned, const OpMatchers &...);
 };
 
+/// Tries to match Inst and updates Ops on success.
+///
+/// If Inst has the specified Opcode and its operand list prefix matches Ops,
+/// this function returns true and updates Ops, otherwise false is returned and
+/// values of Ops are kept as before matchInst was called.
+///
+/// Passing std::nullopt to Opcode skips this initial check and can serve as a
+/// wildcard extractor.
+///
+/// Please note that while Ops are technically passed by a const reference to
+/// make invocations like `matchInst(MI, Opcode, Imm(42))` possible, all their
+/// fields are marked mutable.
 template <class... OpMatchers>
 bool matchInst(const llvm::MCInst &Inst, unsigned Opcode, const OpMatchers &...Ops) {
-    if (Inst.getOpcode() != Opcode || Inst.getNumOperands() != sizeof...(Ops))
+    if (Inst.getOpcode() != Opcode || sizeof...(Ops) > Inst.getNumOperands())
         return false;
 
+    // Ask each matcher to remember its current value in case of rollback.
     (Ops.remember(), ...);
 
+    // Check if all matchers match the corresponding operands.
     const llvm::MCOperand *It = Inst.begin();
     const bool AllMatched = (Ops.matches(*(It++)) && ... && true);
+
+    // If match failed, restore the original captured values.
     if (!AllMatched)
         (Ops.restore(), ...);
+
     return AllMatched;
 }
 
