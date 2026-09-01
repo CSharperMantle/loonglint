@@ -46,7 +46,14 @@ Set the variable `LLVM_PROJECT` to a source clone of <https://github.com/llvm/ll
 
 ```sh
 cd loonglint
-cmake -S "$LLVM_PROJECT"/llvm -B build -G Ninja -DLLVM_EXTERNAL_PROJECTS='loonglint' -DLLVM_EXTERNAL_LOONGLINT_SOURCE_DIR="$(pwd)" -DLLVM_TARGETS_TO_BUILD='LoongArch' -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake \
+	-S "$LLVM_PROJECT"/llvm \
+	-B build \
+	-G Ninja \
+	-DLLVM_EXTERNAL_PROJECTS='loonglint' \
+	-DLLVM_EXTERNAL_LOONGLINT_SOURCE_DIR="$(pwd)" \
+	-DLLVM_TARGETS_TO_BUILD='LoongArch' \
+	-DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja -C build
 ```
 
