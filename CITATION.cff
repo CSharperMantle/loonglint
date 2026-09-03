@@ -1,0 +1,31 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: LoongLint
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Rong
+    family-names: Bao
+    email: rong.bao@csmantle.top
+    affiliation: Hangzhou Dianzi University
+    orcid: 'https://orcid.org/0000-0001-5486-518X'
+repository-code: 'https://github.com/CSharperMantle/loonglint'
+abstract: >-
+  LoongLint is an LLVM-based peephole linter for LoongArch
+  ELF and raw binaries. It uses a linear scan to partition
+  the input binary, then runs a sliding window across each
+  span to match against a predefined yet extensible list of
+  rules.
+keywords:
+  - loongarch
+  - peephole optimization
+  - software analysis
+  - llvm
+license: GPL-3.0-or-later
+commit: e1a31a0a7f2cc20078be795615bf002aa02f5909
+version: 0.1.0
+date-released: '2026-09-01'
