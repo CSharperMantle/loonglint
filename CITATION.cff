@@ -13,6 +13,9 @@ authors:
     email: rong.bao@csmantle.top
     affiliation: Hangzhou Dianzi University
     orcid: 'https://orcid.org/0000-0001-5486-518X'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22275937
 repository-code: 'https://github.com/CSharperMantle/loonglint'
 abstract: >-
   LoongLint is an LLVM-based peephole linter for LoongArch
