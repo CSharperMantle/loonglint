@@ -46,7 +46,7 @@ std::optional<Rule::Match> MulhSextRule::match(ArrayRef<Instruction> Instruction
             if (matchInst(F, MulhOp, MulhRdReg, Reg(), Reg()) &&
                 matchInst(S, ExtOp, MulhRdReg, MulhRdReg, Imm(0))) {
                 Rule::Match Result;
-                Result.Replacement.push_back(F);
+                Result.Replacement.emplace_back(F);
                 return Result;
             }
         }

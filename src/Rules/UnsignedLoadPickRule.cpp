@@ -49,7 +49,7 @@ std::optional<Rule::Match> UnsignedLoadPickRule::match(ArrayRef<Instruction> Ins
             if (matchInst(F, LdOp, LdRdReg, Reg(), Skip()) &&
                 matchInst(S, LoongArch::BSTRPICK_D, LdRdReg, LdRdReg, Imm(Msb), Imm(0))) {
                 Rule::Match Result;
-                Result.Replacement.push_back(F);
+                Result.Replacement.emplace_back(F);
                 return Result;
             }
         }
@@ -64,7 +64,7 @@ std::optional<Rule::Match> UnsignedLoadPickRule::match(ArrayRef<Instruction> Ins
             if (matchInst(F, LdOp, LdRdReg, Reg(), Imm()) &&
                 matchInst(S, LoongArch::BSTRPICK_W, LdRdReg, LdRdReg, Imm(Msb), Imm(0))) {
                 Rule::Match Result;
-                Result.Replacement.push_back(F);
+                Result.Replacement.emplace_back(F);
                 return Result;
             }
         }

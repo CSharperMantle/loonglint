@@ -35,7 +35,7 @@ std::optional<Rule::Match> LoadExtendRule::match(ArrayRef<Instruction> Instructi
 
     const auto DeleteExtension = [&]() -> std::optional<Match> {
         Rule::Match Result;
-        Result.Replacement.push_back(F);
+        Result.Replacement.emplace_back(F);
         return Result;
     };
 

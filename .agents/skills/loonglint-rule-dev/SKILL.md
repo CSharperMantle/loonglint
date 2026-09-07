@@ -61,7 +61,7 @@ class XRule final : public Rule {
 
 - Architecture gating: if the entire rule is variant-specific, override `shouldRun` (see `NopLA64Rule`); if only some arms are, check `Ctx.Arch` inside `match()` (see `ShiftMaskRule`). On LA32, "LA32" means LA32S: LA32S-granted instructions (`BSTRPICK.W`, `ANDN`/`ORN`, `BEQZ`/`BNEZ`, byte/bit operations) are available without extra gating, and `.D`/64-only forms are not. Note that some instructions might have different implications on LA32 and LA64.
   - For example, `ADDI.W Rd, Rd, 0` is an no-op on LA32 since the register is one-word wide. It is a sign-extension from word to double-word on LA64, however.
-- Return `std::nullopt` for no finding. A `Match` replaces the whole window in the suggestion; deletion rules return the surviving instruction (`Result.Replacement.push_back(F)`), fusion rules build new instructions with `MCInstBuilder`.
+- Return `std::nullopt` for no finding. A `Match` replaces the whole window in the suggestion; deletion rules return the surviving instruction (`Result.Replacement.emplace_back(F)`), fusion rules build new instructions with `MCInstBuilder`.
 - Style: `.clang-format` (LLVM-based, 4-space indent, column 100). PascalCase everywhere, `The` prefix for global singletons, no multiple definitions-with-initializers on one line. Mnemonics in our own comments and strings are UPPERCASE (`ADD.D`); never rewrite LLVM's disassembly output -- fixtures contain real, lowercase assembly exactly as llvm-mc accepts it.
 - Documentation: do not hard-wrap Markdown anywhere; let the renderer lay it out.
 
@@ -72,7 +72,7 @@ class XRule final : public Rule {
 `Rule::Match::Replacement` is a `llvm::SmallVector<llvm::MCInst, 0>` that replaces the entire matched window in the suggestion.
 
 - Build modified instructions with `MCInstBuilder`: `MCInstBuilder(Op).addReg(Rd).addReg(Rj).addImm(Combined)`. Operand order must follow the canonical TableGen definition.
-- Keep an instruction verbatim with `Result.Replacement.push_back(F);` (deletion of its partner).
+- Keep an instruction verbatim with `Result.Replacement.emplace_back(F);` (deletion of its partner).
 - Immediate fields that TableGen defines as unsigned bitfields (e.g. `BSTRPICK`'s msb/lsb) still travel through `Imm`'s `int64_t` -- the values are small positives, but cast deliberately when deriving them from arithmetic (`static_cast<unsigned>(Lsb)`).
 - Recombining offsets needs the encoder's rules: plain load/store offsets are `isInt<12>`, `LDPTR`'s decoded immediate is already scaled, so a combined value is checked with `isShiftedInt<14, 2>` (see `AddressLoadRule`).
 
