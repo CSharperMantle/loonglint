@@ -78,6 +78,10 @@ std::optional<DecodedInstruction> DisassemblerTarget::decodeInst(ArrayRef<uint8_
     return DecodedInstruction{std::move(Instr), static_cast<unsigned>(Size)};
 }
 
+unsigned DisassemblerTarget::getCellSize() const {
+    return 4;
+}
+
 void DisassemblerTarget::setABIVersion(unsigned Version) {
     Disasm->setABIVersion(Version);
 }

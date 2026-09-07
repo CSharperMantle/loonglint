@@ -214,7 +214,7 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fin
     for (const auto &I : TheFinding.Instructions)
         printInstruction(DT, FindingLineKind::Removed, I.Address, I.Inst);
     for (const auto &[II, MI] : enumerate(TheFinding.Match.Replacement))
-        printInstruction(DT, FindingLineKind::Added, Address + 4 * II, MI);
+        printInstruction(DT, FindingLineKind::Added, Address + DT.getCellSize() * II, MI);
 
     outs() << '\n';
 }

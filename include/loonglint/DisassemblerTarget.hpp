@@ -37,6 +37,8 @@ class DisassemblerTarget {
   public:
     static llvm::Expected<DisassemblerTarget> create(Architecture TheArchitecture);
 
+    unsigned getCellSize() const;
+
     void setABIVersion(unsigned Version);
     void setUseColor(bool UseColor);
 
