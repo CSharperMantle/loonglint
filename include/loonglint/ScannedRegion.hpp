@@ -39,17 +39,17 @@ class ScannedRegion {
 
   private:
     ScannedRegion(const DisassemblerTarget &DT, llvm::ArrayRef<uint8_t> Bytes, uint64_t Address,
-                  size_t WordCount, uint64_t TrailingBytes);
+                  size_t CellCount, uint64_t TrailingBytes);
 
     const DisassemblerTarget &DT;
     llvm::ArrayRef<uint8_t> Bytes;
     uint64_t Address;
-    size_t WordCount;
-    // Set the corresponding bit to 1 to indicate an opaque word whose decoding failed. Indexed by
-    // word.
+    size_t CellCount;
+    // Set the corresponding bit to 1 to indicate an opaque cell whose decoding failed. Indexed by
+    // cell.
     llvm::SparseBitVector<> OpaqueWords;
-    // Set the corresponding bit to 1 to indicate a sequence boundary before a word. Indexed by
-    // word, with the final bit denoting the region end.
+    // Set the corresponding bit to 1 to indicate a sequence boundary before a cell. Indexed by
+    // cell, with the final bit denoting the region end.
     llvm::BitVector Boundaries;
     uint64_t TrailingBytes;
 };

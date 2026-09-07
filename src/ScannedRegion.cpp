@@ -17,12 +17,14 @@ using namespace llvm;
 
 namespace loonglint {
 
+static constexpr unsigned CellSize = 4;
+
 ScannedRegion::ScannedRegion(const DisassemblerTarget &DT, ArrayRef<uint8_t> Bytes,
-                             uint64_t Address, size_t WordCount, uint64_t TrailingBytes)
-    : DT(DT), Bytes(Bytes), Address(Address), WordCount(WordCount),
-      Boundaries(static_cast<unsigned>(WordCount + 1)), TrailingBytes(TrailingBytes) {
+                             uint64_t Address, size_t CellCount, uint64_t TrailingBytes)
+    : DT(DT), Bytes(Bytes), Address(Address), CellCount(CellCount),
+      Boundaries(static_cast<unsigned>(CellCount + 1)), TrailingBytes(TrailingBytes) {
     Boundaries.set(0);
-    Boundaries.set(static_cast<unsigned>(WordCount));
+    Boundaries.set(static_cast<unsigned>(CellCount));
 }
 
 Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, ArrayRef<uint8_t> Bytes,
@@ -30,22 +32,22 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
     if (Bytes.size() > std::numeric_limits<uint64_t>::max() - Address)
         return createStringError("decode address range overflows");
 
-    const size_t FullSize = Bytes.size() - Bytes.size() % 4;
-    const size_t WordCount = FullSize / 4;
-    if (WordCount > static_cast<size_t>(std::numeric_limits<unsigned>::max() - 1U))
+    const size_t FullSize = Bytes.size() - Bytes.size() % CellSize;
+    const size_t CellCount = FullSize / CellSize;
+    if (CellCount > static_cast<size_t>(std::numeric_limits<unsigned>::max() - 1U))
         return createStringError("region contains too many instruction words");
 
-    ScannedRegion Region(DT, Bytes, Address, WordCount, Bytes.size() - FullSize);
+    ScannedRegion Region(DT, Bytes, Address, CellCount, Bytes.size() - FullSize);
     const uint64_t EndAddress = Address + FullSize;
     MCInstrAnalysis &MIA = *DT.MIA;
     MIA.resetState();
 
-    for (size_t WordIndex = 0; WordIndex < WordCount; ++WordIndex) {
-        const size_t Offset = WordIndex * 4;
+    for (size_t CellIndex = 0; CellIndex < CellCount; ++CellIndex) {
+        const size_t Offset = CellIndex * CellSize;
         const uint64_t InstAddress = Address + Offset;
-        auto Decoded = DT.decodeInst(Bytes.slice(Offset, 4), InstAddress);
+        auto Decoded = DT.decodeInst(Bytes.slice(Offset, CellSize), InstAddress);
         if (!Decoded) {
-            Region.OpaqueWords.set(static_cast<unsigned>(WordIndex));
+            Region.OpaqueWords.set(static_cast<unsigned>(CellIndex));
             MIA.resetState();
             continue;
         }
@@ -59,12 +61,12 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
         if ((IsBranch || IsCall) && MIA.evaluateBranch(Inst, InstAddress, 4, TargetAddress) &&
             TargetAddress >= Address && TargetAddress < EndAddress) {
             const uint64_t TargetOffset = TargetAddress - Address;
-            if (TargetOffset % 4 == 0)
-                Region.Boundaries.set(static_cast<unsigned>(TargetOffset / 4));
+            if (TargetOffset % CellSize == 0)
+                Region.Boundaries.set(static_cast<unsigned>(TargetOffset / CellSize));
         }
 
         if (IsCall || IsTerminator)
-            Region.Boundaries.set(static_cast<unsigned>(WordIndex + 1));
+            Region.Boundaries.set(static_cast<unsigned>(CellIndex + 1));
 
         MIA.updateState(Inst, DT.MSTI.get(), InstAddress);
     }
@@ -75,25 +77,25 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
 
 RegionSummary ScannedRegion::summary() const {
     const uint64_t SkippedWords = OpaqueWords.count();
-    return {WordCount - SkippedWords, SkippedWords, TrailingBytes, Address + WordCount * 4};
+    return {CellCount - SkippedWords, SkippedWords, TrailingBytes, Address + CellCount * CellSize};
 }
 
 void ScannedRegion::forEachGap(GapHandler HandleGap) const {
-    const auto EmitGap = [&](unsigned BeginWord, unsigned EndWord) {
-        HandleGap(Address + static_cast<uint64_t>(BeginWord) * 4,
-                  Address + static_cast<uint64_t>(EndWord) * 4);
+    const auto EmitGap = [&](unsigned BeginCell, unsigned EndCell) {
+        HandleGap(Address + static_cast<uint64_t>(BeginCell) * CellSize,
+                  Address + static_cast<uint64_t>(EndCell) * CellSize);
     };
 
     std::optional<unsigned> GapBegin;
     unsigned GapEnd = 0;
-    for (unsigned WordIndex : OpaqueWords) {
+    for (unsigned CellIndex : OpaqueWords) {
         if (!GapBegin) {
-            GapBegin = WordIndex;
-        } else if (WordIndex != GapEnd) {
+            GapBegin = CellIndex;
+        } else if (CellIndex != GapEnd) {
             EmitGap(*GapBegin, GapEnd);
-            GapBegin = WordIndex;
+            GapBegin = CellIndex;
         }
-        GapEnd = WordIndex + 1;
+        GapEnd = CellIndex + 1;
     }
 
     if (GapBegin)
@@ -110,32 +112,32 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
     Window.reserve(MaxInstructionCount);
 
     uint64_t FindingCount = 0;
-    size_t NextWord = 0;
-    for (size_t StartWord = 0; StartWord < WordCount; ++StartWord) {
-        if (OpaqueWords.test(static_cast<unsigned>(StartWord))) {
+    size_t NextCell = 0;
+    for (size_t StartCell = 0; StartCell < CellCount; ++StartCell) {
+        if (OpaqueWords.test(static_cast<unsigned>(StartCell))) {
             Window.clear();
-            NextWord = StartWord + 1;
+            NextCell = StartCell + 1;
             continue;
         }
 
-        while (Window.size() < MaxInstructionCount && NextWord < WordCount) {
-            const unsigned NextBit = static_cast<unsigned>(NextWord);
-            if (OpaqueWords.test(NextBit) || (!Window.empty() && Boundaries.test(NextBit)))
+        while (Window.size() < MaxInstructionCount && NextCell < CellCount) {
+            const unsigned NextCellBit = static_cast<unsigned>(NextCell);
+            if (OpaqueWords.test(NextCellBit) || (!Window.empty() && Boundaries.test(NextCellBit)))
                 break;
 
-            const size_t Offset = NextWord * 4;
+            const size_t Offset = NextCell * CellSize;
             const uint64_t InstructionAddress = Address + Offset;
-            auto Decoded = DT.decodeInst(Bytes.slice(Offset, 4), InstructionAddress);
+            auto Decoded = DT.decodeInst(Bytes.slice(Offset, CellSize), InstructionAddress);
             if (!Decoded)
                 return createStringError("instruction at 0x%llx became undecodable",
                                          static_cast<unsigned long long>(InstructionAddress));
 
             auto &[Inst, Size] = *Decoded;
             Window.emplace_back(InstructionAddress, Size, std::move(Inst));
-            ++NextWord;
+            ++NextCell;
         }
 
-        assert(!Window.empty() && Window.front().Address == Address + StartWord * 4 &&
+        assert(!Window.empty() && Window.front().Address == Address + StartCell * CellSize &&
                "bounded instruction window lost synchronization");
 
         FindingCount += Manager.runWindow(Window, HandleFinding);
