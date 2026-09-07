@@ -65,9 +65,6 @@ set_target_properties(LoongLint PROPERTIES
   CXX_EXTENSIONS OFF
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
-)
-
-set_property(TARGET LoongLint PROPERTY
   CXX_CLANG_TIDY "${LOONGLINT_CLANG_TIDY}"
 )
 
@@ -91,9 +88,6 @@ set_target_properties(loonglint PROPERTIES
   CXX_EXTENSIONS OFF
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
-)
-
-set_property(TARGET loonglint PROPERTY
   CXX_CLANG_TIDY "${LOONGLINT_CLANG_TIDY}"
 )
 
