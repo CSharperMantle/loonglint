@@ -37,7 +37,6 @@ using namespace llvm;
 namespace loonglint {
 
 enum class InputFormat { Auto, Elf, Raw };
-enum class ArchitectureOption { Unspecified, LoongArch32, LoongArch64 };
 
 namespace opts {
 
@@ -52,11 +51,8 @@ cl::opt<InputFormat> InputFormat("input-format", cl::desc("Input format"),
                                             clEnumValN(InputFormat::Elf, "elf", "ELF object"),
                                             clEnumValN(InputFormat::Raw, "raw", "Raw binary")),
                                  cl::cat(LoongLintCategory));
-cl::opt<ArchitectureOption>
-    Arch("arch", cl::desc("Architecture for raw input"), cl::init(ArchitectureOption::Unspecified),
-         cl::values(clEnumValN(ArchitectureOption::LoongArch64, "loongarch64", "LoongArch64"),
-                    clEnumValN(ArchitectureOption::LoongArch32, "loongarch32", "LoongArch32")),
-         cl::cat(LoongLintCategory));
+cl::opt<std::string> Arch("arch", cl::desc("Architecture for raw input"),
+                          cl::value_desc("loongarch32|loongarch64"), cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
 cl::list<std::string> Exclude(
@@ -255,13 +251,23 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     return SR;
 }
 
+static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
+    if (Name == "loongarch64")
+        return makeLoongArchSpec(true);
+    if (Name == "loongarch32")
+        return makeLoongArchSpec(false);
+    return createStringError("unknown architecture '%s'", Name.str().c_str());
+}
+
 static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer, const RuleFilter &Filter) {
-    if (opts::Arch == ArchitectureOption::Unspecified)
+    if (opts::Arch.empty())
         return createStringError("--arch is required for raw input");
 
-    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(opts::Arch == ArchitectureOption::LoongArch64);
+    Expected<std::unique_ptr<ArchSpec>> AS = makeArchSpec(opts::Arch);
+    if (auto E = AS.takeError())
+        return E;
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(**AS);
     if (auto E = DT.takeError())
         return E;
 
@@ -281,7 +287,10 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
     if (!TheELF)
         return createStringError("unsupported input format for '%s': expected ELF",
                                  opts::InputFile.c_str());
-    if (TheELF->getEMachine() != ELF::EM_LOONGARCH)
+
+    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(TheELF->is64Bit());
+
+    if (TheELF->getEMachine() != AS->getELFMachine())
         return createStringError("unsupported ELF machine in '%s': expected LoongArch",
                                  opts::InputFile.c_str());
     if (!is_contained({ELF::ET_EXEC, ELF::ET_DYN}, TheELF->getEType()))
@@ -289,8 +298,6 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
                                  opts::InputFile.c_str());
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
-
-    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(TheELF->is64Bit());
 
     Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
