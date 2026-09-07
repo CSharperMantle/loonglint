@@ -68,15 +68,16 @@ Expected<DisassemblerTarget> DisassemblerTarget::create(const ArchSpec &AS) {
 
 std::optional<DecodedInstruction> DisassemblerTarget::decodeInst(ArrayRef<uint8_t> Bytes,
                                                                  uint64_t Address) const {
-    if (Bytes.size() < 4)
+    const unsigned CellSize = AS.getCellSize();
+    if (Bytes.size() < CellSize)
         return std::nullopt;
 
     MCInst Instr;
     uint64_t Size = 0;
-    if (Disasm->getInstruction(Instr, Size, Bytes.slice(0, 4), Address, nulls()) !=
-        MCDisassembler::Success)
+    if (Disasm->getInstruction(Instr, Size, Bytes, Address, nulls()) != MCDisassembler::Success)
         return std::nullopt;
-    assert(Size == 4 && "non-4B LoongArch instruction is peculiar!");
+    assert(Size >= CellSize && Size % CellSize == 0 && Size <= Bytes.size() &&
+           "decoder reported a length that is not a whole number of cells");
 
     return DecodedInstruction{std::move(Instr), static_cast<unsigned>(Size)};
 }

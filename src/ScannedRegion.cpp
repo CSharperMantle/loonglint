@@ -139,7 +139,7 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
 
             const size_t Offset = NextCell * DT.getCellSize();
             const uint64_t InstructionAddress = Address + Offset;
-            auto Decoded = DT.decodeInst(Bytes.slice(Offset, DT.getCellSize()), InstructionAddress);
+            auto Decoded = DT.decodeInst(Bytes.slice(Offset), InstructionAddress);
             if (!Decoded)
                 return createStringError("instruction at 0x%llx became undecodable",
                                          static_cast<unsigned long long>(InstructionAddress));
