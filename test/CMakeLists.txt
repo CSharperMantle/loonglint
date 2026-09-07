@@ -35,7 +35,7 @@ configure_lit_site_cfg(
 
 add_lit_testsuite(check-loonglint "Running LoongLint regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS ${LOONGLINT_TEST_DEPENDS}
+  DEPENDS ${LOONGLINT_TEST_DEPENDS} LoongLintUnitTests
 )
 
 add_subdirectory(Unit)
