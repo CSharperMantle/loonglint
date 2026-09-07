@@ -22,7 +22,7 @@
 
 namespace loonglint {
 
-enum class Architecture { LoongArch32, LoongArch64 };
+class ArchSpec;
 
 // (Instruction, Size)
 using DecodedInstruction = std::tuple<llvm::MCInst, unsigned>;
@@ -35,7 +35,7 @@ struct Instruction {
 
 class DisassemblerTarget {
   public:
-    static llvm::Expected<DisassemblerTarget> create(Architecture TheArchitecture);
+    static llvm::Expected<DisassemblerTarget> create(const ArchSpec &AS);
 
     unsigned getCellSize() const;
 
@@ -49,12 +49,12 @@ class DisassemblerTarget {
     friend class RuleManager;
     friend class Rule;
 
-    explicit DisassemblerTarget(Architecture Arch) : Arch(Arch) {}
+    explicit DisassemblerTarget(const ArchSpec &AS) : AS(AS) {}
 
     std::optional<DecodedInstruction> decodeInst(llvm::ArrayRef<uint8_t> Bytes,
                                                  uint64_t Address) const;
 
-    Architecture Arch;
+    const ArchSpec &AS;
     std::unique_ptr<llvm::MCRegisterInfo> MRI;
     std::unique_ptr<llvm::MCInstrInfo> MII;
     std::unique_ptr<llvm::MCAsmInfo> MAI;

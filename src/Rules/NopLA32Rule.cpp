@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/NopLA32Rule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -24,8 +25,10 @@ unsigned NopLA32Rule::getInstructionCount() const {
     return 1;
 }
 
+NopLA32Rule::NopLA32Rule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
+
 bool NopLA32Rule::shouldRun(const Context &Ctx) const {
-    return Ctx.Arch == Architecture::LoongArch32;
+    return !LoongAS.is64();
 }
 
 std::optional<Rule::Match> NopLA32Rule::match(ArrayRef<Instruction> Instructions,

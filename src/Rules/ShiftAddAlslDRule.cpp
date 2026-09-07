@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/ShiftAddAlslDRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -26,8 +27,10 @@ unsigned ShiftAddAlslDRule::getInstructionCount() const {
     return 2;
 }
 
+ShiftAddAlslDRule::ShiftAddAlslDRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
+
 bool ShiftAddAlslDRule::shouldRun(const Context &Ctx) const {
-    return Ctx.Arch == Architecture::LoongArch64;
+    return LoongAS.is64();
 }
 
 std::optional<Rule::Match> ShiftAddAlslDRule::match(ArrayRef<Instruction> Instructions,

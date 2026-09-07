@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/ShiftMaskRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -14,6 +15,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+ShiftMaskRule::ShiftMaskRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef ShiftMaskRule::getID() const {
     return "integer/shift-mask";
@@ -64,7 +67,7 @@ std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructio
     if (matchInst(F, LoongArch::ANDI, CountRdReg, CountRjReg, MaskImm)) {
         if ((MaskImm.get() & CountMask) != CountMask)
             return std::nullopt;
-    } else if (Ctx.Arch == Architecture::LoongArch64) {
+    } else if (LoongAS.is64()) {
         Imm MsbImm;
         if (!matchInst(F, LoongArch::BSTRPICK_D, CountRdReg, CountRjReg, MsbImm, Imm(0)))
             return std::nullopt;

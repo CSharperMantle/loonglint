@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/MulhSextRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -24,8 +25,10 @@ unsigned MulhSextRule::getInstructionCount() const {
     return 2;
 }
 
+MulhSextRule::MulhSextRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
+
 bool MulhSextRule::shouldRun(const Context &Ctx) const {
-    return Ctx.Arch == Architecture::LoongArch64;
+    return LoongAS.is64();
 }
 
 std::optional<Rule::Match> MulhSextRule::match(ArrayRef<Instruction> Instructions,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "loonglint/DisassemblerTarget.hpp"
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
@@ -258,11 +259,9 @@ static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer, const RuleFilter &F
     if (opts::Arch == ArchitectureOption::Unspecified)
         return createStringError("--arch is required for raw input");
 
-    const Architecture TheArchitecture = opts::Arch == ArchitectureOption::LoongArch32
-                                             ? Architecture::LoongArch32
-                                             : Architecture::LoongArch64;
+    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(opts::Arch == ArchitectureOption::LoongArch64);
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(TheArchitecture);
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
         return E;
 
@@ -291,8 +290,9 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(
-        TheELF->is64Bit() ? Architecture::LoongArch64 : Architecture::LoongArch32);
+    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(TheELF->is64Bit());
+
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
         return E;
 
@@ -416,9 +416,9 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    LLVMInitializeLoongArchTargetInfo();
-    LLVMInitializeLoongArchTargetMC();
-    LLVMInitializeLoongArchDisassembler();
+    InitializeAllTargetInfos();
+    InitializeAllTargetMCs();
+    InitializeAllDisassemblers();
 
     Expected<StatsReport> SR = lintInput(*TheRuleFilter);
     if (auto E = SR.takeError()) {

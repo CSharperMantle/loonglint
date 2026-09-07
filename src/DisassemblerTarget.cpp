@@ -2,6 +2,8 @@
 
 #include "loonglint/DisassemblerTarget.hpp"
 
+#include "loonglint/ArchSpec.hpp"
+
 #include "llvm/MC/MCTargetOptions.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
@@ -15,8 +17,8 @@ using namespace llvm;
 
 namespace loonglint {
 
-Expected<DisassemblerTarget> DisassemblerTarget::create(Architecture TheArchitecture) {
-    Triple TheTriple(TheArchitecture == Architecture::LoongArch32 ? "loongarch32" : "loongarch64");
+Expected<DisassemblerTarget> DisassemblerTarget::create(const ArchSpec &AS) {
+    const Triple TheTriple = AS.getTriple();
 
     std::string Error;
     const Target *TheTarget = TargetRegistry::lookupTarget(TheTriple, Error);
@@ -24,7 +26,7 @@ Expected<DisassemblerTarget> DisassemblerTarget::create(Architecture TheArchitec
         return createStringError("cannot find target '%s': %s", TheTriple.str().c_str(),
                                  Error.c_str());
 
-    DisassemblerTarget DT(TheArchitecture);
+    DisassemblerTarget DT(AS);
 
     DT.MRI.reset(TheTarget->createMCRegInfo(TheTriple));
     if (!DT.MRI)
@@ -38,7 +40,8 @@ Expected<DisassemblerTarget> DisassemblerTarget::create(Architecture TheArchitec
     if (!DT.MAI)
         return createStringError("cannot initialize MCAsmInfo");
 
-    DT.MSTI.reset(TheTarget->createMCSubtargetInfo(TheTriple, "", ""));
+    const MCSubtarget Subtarget = AS.getMCSubtarget();
+    DT.MSTI.reset(TheTarget->createMCSubtargetInfo(TheTriple, Subtarget.CPU, Subtarget.Features));
     if (!DT.MSTI)
         return createStringError("cannot initialize MCSubtargetInfo");
 
@@ -79,7 +82,7 @@ std::optional<DecodedInstruction> DisassemblerTarget::decodeInst(ArrayRef<uint8_
 }
 
 unsigned DisassemblerTarget::getCellSize() const {
-    return 4;
+    return AS.getCellSize();
 }
 
 void DisassemblerTarget::setABIVersion(unsigned Version) {

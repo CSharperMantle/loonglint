@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/ByteReverseRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -26,8 +27,10 @@ unsigned ByteReverseRule::getInstructionCount() const {
     return 2;
 }
 
+ByteReverseRule::ByteReverseRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
+
 bool ByteReverseRule::shouldRun(const Context &Ctx) const {
-    return Ctx.Arch == Architecture::LoongArch64;
+    return LoongAS.is64();
 }
 
 std::optional<Rule::Match> ByteReverseRule::match(ArrayRef<Instruction> Instructions,

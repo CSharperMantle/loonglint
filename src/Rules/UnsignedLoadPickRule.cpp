@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/UnsignedLoadPickRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -12,6 +13,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+UnsignedLoadPickRule::UnsignedLoadPickRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef UnsignedLoadPickRule::getID() const {
     return "memory/unsigned-load-pick";
@@ -34,7 +37,7 @@ std::optional<Rule::Match> UnsignedLoadPickRule::match(ArrayRef<Instruction> Ins
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
 
-    if (Ctx.Arch == Architecture::LoongArch64) {
+    if (LoongAS.is64()) {
         // BSTRPICK.D rd, rd, Msb, 0 after LD/LDX.{BU,HU,WU} re-extracts exactly
         // what the unsigned load already produced.
         for (const auto &[LdOp, Msb] : {

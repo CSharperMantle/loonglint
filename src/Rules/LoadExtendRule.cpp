@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/LoadExtendRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -11,6 +12,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+LoadExtendRule::LoadExtendRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef LoadExtendRule::getID() const {
     return "memory/load-extend";
@@ -54,7 +57,7 @@ std::optional<Rule::Match> LoadExtendRule::match(ArrayRef<Instruction> Instructi
             return DeleteExtension();
     }
     do {
-        if (Ctx.Arch == Architecture::LoongArch64) {
+        if (LoongAS.is64()) {
             // LD.W/LDPTR.W + ADDI.W/SLLI.W rd, rd, 0  ->  delete the extension. LD.W and LDPTR.W
             // both sign-extend their word result, so the word-extension idioms are
             // redundant after them.

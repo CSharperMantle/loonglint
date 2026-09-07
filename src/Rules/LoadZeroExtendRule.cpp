@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/LoadZeroExtendRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -14,6 +15,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+LoadZeroExtendRule::LoadZeroExtendRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef LoadZeroExtendRule::getID() const {
     return "memory/load-zero-extend";
@@ -48,9 +51,9 @@ std::optional<Rule::Match> LoadZeroExtendRule::match(ArrayRef<Instruction> Instr
              std::make_tuple(LoongArch::LD_H, LoongArch::BSTRPICK_W, LoongArch::LD_HU, int64_t(15),
                              false),
          }) {
-        if (Needs64 && Ctx.Arch != Architecture::LoongArch64)
+        if (Needs64 && !LoongAS.is64())
             continue;
-        if (!Needs64 && Ctx.Arch != Architecture::LoongArch32)
+        if (!Needs64 && LoongAS.is64())
             continue;
 
         Reg LdRdReg, LdRjReg;

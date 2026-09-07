@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/IndexedLoadRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -26,8 +27,10 @@ unsigned IndexedLoadRule::getInstructionCount() const {
     return 2;
 }
 
+IndexedLoadRule::IndexedLoadRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
+
 bool IndexedLoadRule::shouldRun(const Context &Ctx) const {
-    return Ctx.Arch == Architecture::LoongArch64;
+    return LoongAS.is64();
 }
 
 std::optional<Rule::Match> IndexedLoadRule::match(ArrayRef<Instruction> Instructions,

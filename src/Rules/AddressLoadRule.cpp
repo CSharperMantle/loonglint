@@ -2,6 +2,7 @@
 
 #include "loonglint/Rules/AddressLoadRule.hpp"
 
+#include "loonglint/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"
@@ -15,6 +16,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+AddressLoadRule::AddressLoadRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef AddressLoadRule::getID() const {
     return "memory/address-load";
@@ -37,8 +40,7 @@ std::optional<Rule::Match> AddressLoadRule::match(ArrayRef<Instruction> Instruct
     const MCInst &F = Instructions[0].Inst;
     const MCInst &S = Instructions[1].Inst;
 
-    const unsigned AddiOp =
-        Ctx.Arch == Architecture::LoongArch64 ? LoongArch::ADDI_D : LoongArch::ADDI_W;
+    const unsigned AddiOp = LoongAS.is64() ? LoongArch::ADDI_D : LoongArch::ADDI_W;
 
     Reg AddiRdReg, AddiRjReg;
     Imm AddiSi12Imm;
@@ -67,7 +69,7 @@ std::optional<Rule::Match> AddressLoadRule::match(ArrayRef<Instruction> Instruct
         return true;
     };
 
-    if (Ctx.Arch == Architecture::LoongArch32) {
+    if (!LoongAS.is64()) {
         for (const unsigned LoadOp : {LoongArch::LD_B, LoongArch::LD_H, LoongArch::LD_W,
                                       LoongArch::LD_BU, LoongArch::LD_HU})
             if (TryLoad(LoadOp, false))
