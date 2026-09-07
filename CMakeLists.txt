@@ -34,31 +34,31 @@ add_llvm_library(LoongLint
   src/LoongArchSpec.cpp
   src/RuleFilter.cpp
   src/RuleManager.cpp
-  src/Rules/AddiPairRule.cpp
-  src/Rules/AddressLoadRule.cpp
-  src/Rules/AndNotRule.cpp
-  src/Rules/BitCountRule.cpp
-  src/Rules/BitExtractRule.cpp
-  src/Rules/BitReverseRule.cpp
-  src/Rules/BranchToNextRule.cpp
-  src/Rules/ByteReverseRule.cpp
-  src/Rules/DegenerateBranchRule.cpp
-  src/Rules/IndexedLoadRule.cpp
-  src/Rules/LoadExtendRule.cpp
-  src/Rules/LoadZeroExtendRule.cpp
-  src/Rules/MulhSextRule.cpp
-  src/Rules/NopLA32Rule.cpp
-  src/Rules/NopLA64Rule.cpp
-  src/Rules/NopRule.cpp
-  src/Rules/NotOrRule.cpp
-  src/Rules/OrNotRule.cpp
-  src/Rules/RotateCombineRule.cpp
-  src/Rules/ShiftAddAlslDRule.cpp
-  src/Rules/ShiftChainRule.cpp
-  src/Rules/ShiftDoubleRule.cpp
-  src/Rules/ShiftMaskRule.cpp
-  src/Rules/UnsignedLoadPickRule.cpp
-  src/Rules/ZeroExtendRule.cpp
+  src/Rules/LoongArch/AddiPairRule.cpp
+  src/Rules/LoongArch/AddressLoadRule.cpp
+  src/Rules/LoongArch/AndNotRule.cpp
+  src/Rules/LoongArch/BitCountRule.cpp
+  src/Rules/LoongArch/BitExtractRule.cpp
+  src/Rules/LoongArch/BitReverseRule.cpp
+  src/Rules/LoongArch/BranchToNextRule.cpp
+  src/Rules/LoongArch/ByteReverseRule.cpp
+  src/Rules/LoongArch/DegenerateBranchRule.cpp
+  src/Rules/LoongArch/IndexedLoadRule.cpp
+  src/Rules/LoongArch/LoadExtendRule.cpp
+  src/Rules/LoongArch/LoadZeroExtendRule.cpp
+  src/Rules/LoongArch/MulhSextRule.cpp
+  src/Rules/LoongArch/NopLA32Rule.cpp
+  src/Rules/LoongArch/NopLA64Rule.cpp
+  src/Rules/LoongArch/NopRule.cpp
+  src/Rules/LoongArch/NotOrRule.cpp
+  src/Rules/LoongArch/OrNotRule.cpp
+  src/Rules/LoongArch/RotateCombineRule.cpp
+  src/Rules/LoongArch/ShiftAddAlslDRule.cpp
+  src/Rules/LoongArch/ShiftChainRule.cpp
+  src/Rules/LoongArch/ShiftDoubleRule.cpp
+  src/Rules/LoongArch/ShiftMaskRule.cpp
+  src/Rules/LoongArch/UnsignedLoadPickRule.cpp
+  src/Rules/LoongArch/ZeroExtendRule.cpp
   src/ScannedRegion.cpp
 )
 
