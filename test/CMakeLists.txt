@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+set(LOONGLINT_TEST_DEPENDS_COMMON
+  FileCheck
+  count
+  not
+)
+
+set(LOONGLINT_TEST_DEPENDS
+  ${LOONGLINT_TEST_DEPENDS_COMMON}
+  llvm-mc
+  llvm-objcopy
+  yaml2obj
+)
+
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
   ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
@@ -20,14 +33,9 @@ configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/Unit/lit.cfg.py
 )
 
-add_lit_testsuite(check-loonglint "Running loonglint regression tests"
+add_lit_testsuite(check-loonglint "Running LoongLint regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
-  DEPENDS
-  FileCheck
-  LoongLintUnitTests
-  llvm-mc
-  llvm-objcopy
-  not
-  yaml2obj
-  loonglint
+  DEPENDS ${LOONGLINT_TEST_DEPENDS}
 )
+
+add_subdirectory(Unit)

@@ -6,7 +6,7 @@ import lit.formats
 from lit.llvm import llvm_config
 from lit.llvm.subst import FindTool, ToolSubst
 
-config.name = "loonglint"
+config.name = "LoongLint"
 config.test_format = lit.formats.ShTest()
 config.suffixes = [".s", ".test"]
 config.excludes = ["Inputs"]
