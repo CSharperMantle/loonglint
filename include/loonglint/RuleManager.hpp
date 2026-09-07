@@ -28,11 +28,11 @@ class RuleManager final {
   public:
     RuleManager(const DisassemblerTarget &DT, const RuleFilter &Filter);
 
-    auto rules() const {
+    auto getRules() const {
         return llvm::make_pointee_range(Rules);
     }
 
-    unsigned maxInstructionCount() const;
+    unsigned getMaxInstCount() const;
 
     uint64_t runWindow(llvm::ArrayRef<Instruction> Window, FindingHandler HandleFinding) const;
 

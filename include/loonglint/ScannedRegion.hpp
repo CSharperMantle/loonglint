@@ -34,7 +34,7 @@ class ScannedRegion {
     llvm::Expected<uint64_t> runRules(const RuleManager &Manager,
                                       FindingHandler HandleFinding) const;
 
-    RegionSummary summary() const;
+    RegionSummary summarize() const;
     void forEachGap(GapHandler HandleGap) const;
 
   private:

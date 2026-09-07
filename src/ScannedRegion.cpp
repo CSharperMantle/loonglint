@@ -78,7 +78,7 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
     return Region;
 }
 
-RegionSummary ScannedRegion::summary() const {
+RegionSummary ScannedRegion::summarize() const {
     const uint64_t SkippedWords = OpaqueWords.count();
     return {CellCount - SkippedWords, SkippedWords, TrailingBytes,
             Address + CellCount * DT.getCellSize()};
@@ -108,12 +108,12 @@ void ScannedRegion::forEachGap(GapHandler HandleGap) const {
 
 Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
                                            FindingHandler HandleFinding) const {
-    const unsigned MaxInstructionCount = Manager.maxInstructionCount();
-    if (MaxInstructionCount == 0)
+    const unsigned MaxInstCount = Manager.getMaxInstCount();
+    if (MaxInstCount == 0)
         return 0;
 
     SmallVector<Instruction> Window;
-    Window.reserve(MaxInstructionCount);
+    Window.reserve(MaxInstCount);
 
     uint64_t FindingCount = 0;
     size_t NextCell = 0;
@@ -127,7 +127,7 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
             // |StartCell| is not a start of an instruction. Skip this cell.
             continue;
 
-        while (Window.size() < MaxInstructionCount && NextCell < CellCount) {
+        while (Window.size() < MaxInstCount && NextCell < CellCount) {
             const unsigned NextCellBit = static_cast<unsigned>(NextCell);
             if (OpaqueWords.test(NextCellBit) || (!Window.empty() && Boundaries.test(NextCellBit)))
                 break;

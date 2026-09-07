@@ -80,7 +80,7 @@ enum class FindingLineKind { Removed, Added };
 class StatsReport {
   public:
     explicit StatsReport(const RuleManager &Manager) {
-        for (const auto &R : Manager.rules())
+        for (const auto &R : Manager.getRules())
             RuleOrder.emplace_back(R.getID());
     }
 
@@ -239,7 +239,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     if (auto E = Region.takeError())
         return E;
 
-    const RegionSummary Summary = Region->summary();
+    const RegionSummary Summary = Region->summarize();
     printRegionWarnings(Name, *Region, Summary);
 
     StatsReport SR(Manager);

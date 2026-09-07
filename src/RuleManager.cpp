@@ -72,9 +72,9 @@ RuleManager::RuleManager(const DisassemblerTarget &DT, const RuleFilter &Filter)
     registerRule(std::make_unique<UnsignedLoadPickRule>());
 }
 
-unsigned RuleManager::maxInstructionCount() const {
+unsigned RuleManager::getMaxInstCount() const {
     unsigned Result = 0;
-    for (const auto &R : rules())
+    for (const auto &R : getRules())
         Result = std::max(Result, R.getInstructionCount());
     return Result;
 }
@@ -82,7 +82,7 @@ unsigned RuleManager::maxInstructionCount() const {
 uint64_t RuleManager::runWindow(ArrayRef<Instruction> Window, FindingHandler HandleFinding) const {
     const Rule::Context Ctx(DT);
     uint64_t FindingCount = 0;
-    for (const auto &R : rules()) {
+    for (const auto &R : getRules()) {
         const unsigned InstructionCount = R.getInstructionCount();
         if (InstructionCount > Window.size() || !R.shouldRun(Ctx))
             continue;
@@ -103,7 +103,7 @@ void RuleManager::registerRule(std::unique_ptr<Rule> NewRule) {
         assert(!ID.empty() && "cannot register a rule without an ID");
         assert(NewRule->getInstructionCount() != 0 && "rule has zero instruction count");
 
-        for (const auto &ExistingRule : rules())
+        for (const auto &ExistingRule : getRules())
             assert(ExistingRule.getID() != ID && "duplicate rule ID");
     });
 
