@@ -21,7 +21,7 @@ static constexpr unsigned CellSize = 4;
 
 ScannedRegion::ScannedRegion(const DisassemblerTarget &DT, ArrayRef<uint8_t> Bytes,
                              uint64_t Address, size_t CellCount, uint64_t TrailingBytes)
-    : DT(DT), Bytes(Bytes), Address(Address), CellCount(CellCount),
+    : DT(DT), Bytes(Bytes), Address(Address), CellCount(CellCount), Starts(CellCount),
       Boundaries(static_cast<unsigned>(CellCount + 1)), TrailingBytes(TrailingBytes) {
     Boundaries.set(0);
     Boundaries.set(static_cast<unsigned>(CellCount));
@@ -42,23 +42,27 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
     MCInstrAnalysis &MIA = *DT.MIA;
     MIA.resetState();
 
-    for (size_t CellIndex = 0; CellIndex < CellCount; ++CellIndex) {
-        const size_t Offset = CellIndex * CellSize;
-        const uint64_t InstAddress = Address + Offset;
-        auto Decoded = DT.decodeInst(Bytes.slice(Offset, CellSize), InstAddress);
+    size_t Pos = 0;
+    for (unsigned CellIndex = 0; Pos + CellSize <= FullSize; CellIndex++) {
+        const uint64_t InstAddress = Address + Pos;
+        auto Decoded = DT.decodeInst(Bytes.slice(Pos), InstAddress);
         if (!Decoded) {
-            Region.OpaqueWords.set(static_cast<unsigned>(CellIndex));
+            Region.OpaqueWords.set(CellIndex);
             MIA.resetState();
+            Pos += CellSize; // Resync by one cell on decode failure.
             continue;
         }
         const auto &[Inst, Size] = *Decoded;
+
+        // The current instruction decodes well. Mark it as a start.
+        Region.Starts.set(CellIndex);
 
         const bool IsBranch = MIA.isBranch(Inst);
         const bool IsCall = MIA.isCall(Inst);
         const bool IsTerminator = MIA.isTerminator(Inst);
 
         uint64_t TargetAddress = 0;
-        if ((IsBranch || IsCall) && MIA.evaluateBranch(Inst, InstAddress, 4, TargetAddress) &&
+        if ((IsBranch || IsCall) && MIA.evaluateBranch(Inst, InstAddress, Size, TargetAddress) &&
             TargetAddress >= Address && TargetAddress < EndAddress) {
             const uint64_t TargetOffset = TargetAddress - Address;
             if (TargetOffset % CellSize == 0)
@@ -66,9 +70,10 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
         }
 
         if (IsCall || IsTerminator)
-            Region.Boundaries.set(static_cast<unsigned>(CellIndex + 1));
+            Region.Boundaries.set(CellIndex + 1);
 
         MIA.updateState(Inst, DT.MSTI.get(), InstAddress);
+        Pos += Size;
     }
 
     MIA.resetState();
@@ -119,11 +124,19 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
             NextCell = StartCell + 1;
             continue;
         }
+        if (!Starts.test(static_cast<unsigned>(StartCell)))
+            // |StartCell| is not a start of an instruction. Skip this cell.
+            continue;
 
         while (Window.size() < MaxInstructionCount && NextCell < CellCount) {
             const unsigned NextCellBit = static_cast<unsigned>(NextCell);
             if (OpaqueWords.test(NextCellBit) || (!Window.empty() && Boundaries.test(NextCellBit)))
                 break;
+            if (!Starts.test(NextCellBit)) {
+                // The current instruction has not finished yet.
+                ++NextCell;
+                continue;
+            }
 
             const size_t Offset = NextCell * CellSize;
             const uint64_t InstructionAddress = Address + Offset;

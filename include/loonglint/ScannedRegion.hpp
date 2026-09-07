@@ -45,6 +45,9 @@ class ScannedRegion {
     llvm::ArrayRef<uint8_t> Bytes;
     uint64_t Address;
     size_t CellCount;
+    // Set the corresponding bit to 1 to indicate that an instruction starts at this cell. Indexed
+    // by cell.
+    llvm::BitVector Starts;
     // Set the corresponding bit to 1 to indicate an opaque cell whose decoding failed. Indexed by
     // cell.
     llvm::SparseBitVector<> OpaqueWords;
