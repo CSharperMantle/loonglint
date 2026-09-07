@@ -63,18 +63,19 @@ Expected<DisassemblerTarget> DisassemblerTarget::create(Architecture TheArchitec
     return DT;
 }
 
-std::optional<MCInst> DisassemblerTarget::decodeInst(ArrayRef<uint8_t> Word,
-                                                     uint64_t Address) const {
-    if (Word.size() != 4)
+std::optional<DecodedInstruction> DisassemblerTarget::decodeInst(ArrayRef<uint8_t> Bytes,
+                                                                 uint64_t Address) const {
+    if (Bytes.size() < 4)
         return std::nullopt;
 
     MCInst Instr;
     uint64_t Size = 0;
-    if (Disasm->getInstruction(Instr, Size, Word, Address, nulls()) != MCDisassembler::Success)
+    if (Disasm->getInstruction(Instr, Size, Bytes.slice(0, 4), Address, nulls()) !=
+        MCDisassembler::Success)
         return std::nullopt;
     assert(Size == 4 && "non-4B LoongArch instruction is peculiar!");
 
-    return Instr;
+    return DecodedInstruction{std::move(Instr), static_cast<unsigned>(Size)};
 }
 
 void DisassemblerTarget::setABIVersion(unsigned Version) {

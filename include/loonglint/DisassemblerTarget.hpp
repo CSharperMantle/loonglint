@@ -24,8 +24,12 @@ namespace loonglint {
 
 enum class Architecture { LoongArch32, LoongArch64 };
 
+// (Instruction, Size)
+using DecodedInstruction = std::tuple<llvm::MCInst, unsigned>;
+
 struct Instruction {
     uint64_t Address;
+    unsigned Size;
     llvm::MCInst Inst;
 };
 
@@ -45,7 +49,8 @@ class DisassemblerTarget {
 
     explicit DisassemblerTarget(Architecture Arch) : Arch(Arch) {}
 
-    std::optional<llvm::MCInst> decodeInst(llvm::ArrayRef<uint8_t> Word, uint64_t Address) const;
+    std::optional<DecodedInstruction> decodeInst(llvm::ArrayRef<uint8_t> Bytes,
+                                                 uint64_t Address) const;
 
     Architecture Arch;
     std::unique_ptr<llvm::MCRegisterInfo> MRI;

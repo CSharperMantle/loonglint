@@ -3,7 +3,6 @@
 #include "loonglint/ScannedRegion.hpp"
 
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrAnalysis.h"
 #include "llvm/Support/Error.h"
 
@@ -44,19 +43,20 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
     for (size_t WordIndex = 0; WordIndex < WordCount; ++WordIndex) {
         const size_t Offset = WordIndex * 4;
         const uint64_t InstAddress = Address + Offset;
-        std::optional<MCInst> Inst = DT.decodeInst(Bytes.slice(Offset, 4), InstAddress);
-        if (!Inst) {
+        auto Decoded = DT.decodeInst(Bytes.slice(Offset, 4), InstAddress);
+        if (!Decoded) {
             Region.OpaqueWords.set(static_cast<unsigned>(WordIndex));
             MIA.resetState();
             continue;
         }
+        const auto &[Inst, Size] = *Decoded;
 
-        const bool IsBranch = MIA.isBranch(*Inst);
-        const bool IsCall = MIA.isCall(*Inst);
-        const bool IsTerminator = MIA.isTerminator(*Inst);
+        const bool IsBranch = MIA.isBranch(Inst);
+        const bool IsCall = MIA.isCall(Inst);
+        const bool IsTerminator = MIA.isTerminator(Inst);
 
         uint64_t TargetAddress = 0;
-        if ((IsBranch || IsCall) && MIA.evaluateBranch(*Inst, InstAddress, 4, TargetAddress) &&
+        if ((IsBranch || IsCall) && MIA.evaluateBranch(Inst, InstAddress, 4, TargetAddress) &&
             TargetAddress >= Address && TargetAddress < EndAddress) {
             const uint64_t TargetOffset = TargetAddress - Address;
             if (TargetOffset % 4 == 0)
@@ -66,7 +66,7 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
         if (IsCall || IsTerminator)
             Region.Boundaries.set(static_cast<unsigned>(WordIndex + 1));
 
-        MIA.updateState(*Inst, DT.MSTI.get(), InstAddress);
+        MIA.updateState(Inst, DT.MSTI.get(), InstAddress);
     }
 
     MIA.resetState();
@@ -125,12 +125,13 @@ Expected<uint64_t> ScannedRegion::runRules(const RuleManager &Manager,
 
             const size_t Offset = NextWord * 4;
             const uint64_t InstructionAddress = Address + Offset;
-            std::optional<MCInst> Inst = DT.decodeInst(Bytes.slice(Offset, 4), InstructionAddress);
-            if (!Inst)
+            auto Decoded = DT.decodeInst(Bytes.slice(Offset, 4), InstructionAddress);
+            if (!Decoded)
                 return createStringError("instruction at 0x%llx became undecodable",
                                          static_cast<unsigned long long>(InstructionAddress));
 
-            Window.emplace_back(InstructionAddress, std::move(*Inst));
+            auto &[Inst, Size] = *Decoded;
+            Window.emplace_back(InstructionAddress, Size, std::move(Inst));
             ++NextWord;
         }
 
