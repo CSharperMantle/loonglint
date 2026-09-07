@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "loonglint/DisassemblerTarget.hpp"
+#include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
 
@@ -57,6 +58,16 @@ cl::opt<ArchitectureOption>
          cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
+cl::list<std::string> Exclude(
+    "exclude",
+    cl::desc("Exclude rules whose ID matches this regular expression (POSIX ERE, repeatable)"),
+    cl::value_desc("regex"), cl::cat(LoongLintCategory));
+cl::alias ExcludeAlias("E", cl::desc("Alias for --exclude"), cl::aliasopt(Exclude), cl::NotHidden);
+cl::list<std::string> ExcludeFile(
+    "exclude-file",
+    cl::desc("Read one exclusion regular expression per line from this file (repeatable); blank "
+             "lines and '#' comments are ignored"),
+    cl::value_desc("file"), cl::cat(LoongLintCategory));
 
 } // namespace opts
 
@@ -243,7 +254,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     return SR;
 }
 
-static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer, const RuleFilter &Filter) {
     if (opts::Arch == ArchitectureOption::Unspecified)
         return createStringError("--arch is required for raw input");
 
@@ -255,12 +266,12 @@ static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer) {
     if (auto E = DT.takeError())
         return E;
 
-    RuleManager Manager(*DT);
+    RuleManager Manager(*DT, Filter);
     return lintRegion(Manager, *DT, "<raw>", arrayRefFromStringRef(Buffer.getBuffer()),
                       opts::BaseAddress);
 }
 
-static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
+static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &Filter) {
     Expected<std::unique_ptr<object::ObjectFile>> Object =
         object::ObjectFile::createObjectFile(Buffer);
     if (auto E = Object.takeError())
@@ -287,7 +298,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer) {
 
     DT->setABIVersion(TheELF->getEIdentABIVersion());
 
-    RuleManager Manager(*DT);
+    RuleManager Manager(*DT, Filter);
     StatsReport SR(Manager);
     bool HasCode = false;
     for (const auto &Section : Object->get()->sections()) {
@@ -330,7 +341,39 @@ static Expected<std::unique_ptr<MemoryBuffer>> readInput() {
     return std::move(*Buffer);
 }
 
-static Expected<StatsReport> lintInput() {
+static Expected<RuleFilter> buildRuleFilter() {
+    SmallVector<std::unique_ptr<MemoryBuffer>> FileBuffers;
+    // Views into |opts::Exclude| and elements from |FileBuffers|.
+    SmallVector<StringRef> Patterns;
+
+    for (const auto &Pattern : opts::Exclude)
+        Patterns.emplace_back(Pattern);
+
+    for (const auto &Path : opts::ExcludeFile) {
+        ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer = MemoryBuffer::getFileAsStream(Path);
+        if (!Buffer)
+            return createStringError(Buffer.getError(), "cannot read exclude file '%s'",
+                                     Path.c_str());
+        StringRef Contents = (*Buffer)->getBuffer();
+        // Ensure that |Buffer| lives long enough by remembering it.
+        FileBuffers.emplace_back(std::move(*Buffer));
+
+        const StringRef EOL = Contents.detectEOL();
+
+        StringRef Line;
+        while (!Contents.empty()) {
+            std::tie(Line, Contents) = Contents.split(EOL);
+            Line = Line.trim();
+            if (Line.empty() || Line.front() == '#') // Comments
+                continue;
+            Patterns.emplace_back(Line);
+        }
+    }
+
+    return RuleFilter::create(Patterns);
+}
+
+static Expected<StatsReport> lintInput(const RuleFilter &Filter) {
     Expected<std::unique_ptr<MemoryBuffer>> Buffer = readInput();
     if (auto E = Buffer.takeError())
         return E;
@@ -345,14 +388,14 @@ static Expected<StatsReport> lintInput() {
         case file_magic::elf_executable:
         case file_magic::elf_shared_object:
         case file_magic::elf_core:
-            return lintELF(Ref);
+            return lintELF(Ref, Filter);
         default:
-            return lintRaw(Ref);
+            return lintRaw(Ref, Filter);
         }
     case InputFormat::Elf:
-        return lintELF(Ref);
+        return lintELF(Ref, Filter);
     case InputFormat::Raw:
-        return lintRaw(Ref);
+        return lintRaw(Ref, Filter);
     }
     llvm_unreachable("unhandled input format");
 }
@@ -367,11 +410,17 @@ int main(int argc, char **argv) {
     if (!validateOptions())
         return 2;
 
+    Expected<RuleFilter> TheRuleFilter = buildRuleFilter();
+    if (auto E = TheRuleFilter.takeError()) {
+        printError(toString(std::move(E)));
+        return 2;
+    }
+
     LLVMInitializeLoongArchTargetInfo();
     LLVMInitializeLoongArchTargetMC();
     LLVMInitializeLoongArchDisassembler();
 
-    Expected<StatsReport> SR = lintInput();
+    Expected<StatsReport> SR = lintInput(*TheRuleFilter);
     if (auto E = SR.takeError()) {
         printError(toString(std::move(E)));
         return 2;

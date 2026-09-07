@@ -11,7 +11,10 @@ set(LLVM_LINK_COMPONENTS
 add_unittest(LoongLintUnitTests LoongLintCoreTests
   DISABLE_PCH_REUSE
   MCInstMatcherTest.cpp
+  RuleFilterTest.cpp
 )
+
+target_link_libraries(LoongLintCoreTests PRIVATE LoongLint)
 
 set_target_properties(LoongLintCoreTests PROPERTIES
   CXX_EXTENSIONS OFF

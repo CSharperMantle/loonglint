@@ -4,6 +4,7 @@
 #define LOONGLINT_RULEMANAGER_HPP
 
 #include "loonglint/Rule.hpp"
+#include "loonglint/RuleFilter.hpp"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLFunctionalExtras.h"
@@ -25,7 +26,7 @@ using FindingHandler = llvm::function_ref<void(const Finding &)>;
 
 class RuleManager final {
   public:
-    explicit RuleManager(const DisassemblerTarget &DT);
+    RuleManager(const DisassemblerTarget &DT, const RuleFilter &Filter);
 
     auto rules() const {
         return llvm::make_pointee_range(Rules);
@@ -39,6 +40,7 @@ class RuleManager final {
     void registerRule(std::unique_ptr<Rule> NewRule);
 
     const DisassemblerTarget &DT;
+    const RuleFilter &Filter;
     llvm::SmallVector<std::unique_ptr<Rule>, 0> Rules;
 };
 

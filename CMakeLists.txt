@@ -13,6 +13,8 @@ set(LLVM_SUBPROJECT_TITLE "loonglint")
 set(LOONGLINT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(LOONGLINT_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
+find_program(LOONGLINT_CLANG_TIDY NAMES clang-tidy REQUIRED)
+
 set(LLVM_LINK_COMPONENTS
   BinaryFormat
   LoongArchDesc
@@ -25,10 +27,11 @@ set(LLVM_LINK_COMPONENTS
   TargetParser
 )
 
-add_llvm_tool(loonglint
+add_llvm_library(LoongLint
+  STATIC
   DISABLE_PCH_REUSE
   src/DisassemblerTarget.cpp
-  src/main.cpp
+  src/RuleFilter.cpp
   src/RuleManager.cpp
   src/Rules/AddiPairRule.cpp
   src/Rules/AddressLoadRule.cpp
@@ -58,26 +61,46 @@ add_llvm_tool(loonglint
   src/ScannedRegion.cpp
 )
 
+set_target_properties(LoongLint PROPERTIES
+  CXX_EXTENSIONS OFF
+  CXX_STANDARD 20
+  CXX_STANDARD_REQUIRED ON
+)
+
+set_property(TARGET LoongLint PROPERTY
+  CXX_CLANG_TIDY "${LOONGLINT_CLANG_TIDY}"
+)
+
+target_include_directories(LoongLint PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_include_directories(LoongLint SYSTEM PRIVATE
+  "${LLVM_MAIN_SRC_DIR}/lib/Target/LoongArch"
+  "${LLVM_BINARY_DIR}/lib/Target/LoongArch"
+)
+
+add_dependencies(LoongLint LoongArchCommonTableGen)
+
+add_llvm_tool(loonglint
+  DISABLE_PCH_REUSE
+  src/main.cpp
+)
+
 set_target_properties(loonglint PROPERTIES
   CXX_EXTENSIONS OFF
   CXX_STANDARD 20
   CXX_STANDARD_REQUIRED ON
 )
 
-target_include_directories(loonglint PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_include_directories(loonglint SYSTEM PRIVATE
-  "${LLVM_MAIN_SRC_DIR}/lib/Target/LoongArch"
-  "${LLVM_BINARY_DIR}/lib/Target/LoongArch"
-)
-
-add_dependencies(loonglint LoongArchCommonTableGen)
-
-find_program(LOONGLINT_CLANG_TIDY NAMES clang-tidy REQUIRED)
 set_property(TARGET loonglint PROPERTY
   CXX_CLANG_TIDY "${LOONGLINT_CLANG_TIDY}"
+)
+
+target_link_libraries(loonglint PRIVATE LoongLint)
+
+target_include_directories(loonglint PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 if(LLVM_INCLUDE_TESTS)

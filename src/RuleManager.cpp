@@ -43,7 +43,8 @@ using namespace llvm;
 
 namespace loonglint {
 
-RuleManager::RuleManager(const DisassemblerTarget &DT) : DT(DT) {
+RuleManager::RuleManager(const DisassemblerTarget &DT, const RuleFilter &Filter)
+    : DT(DT), Filter(Filter) {
     registerRule(std::make_unique<NopRule>());
     registerRule(std::make_unique<NopLA32Rule>());
     registerRule(std::make_unique<NopLA64Rule>());
@@ -105,6 +106,9 @@ void RuleManager::registerRule(std::unique_ptr<Rule> NewRule) {
         for (const auto &ExistingRule : rules())
             assert(ExistingRule.getID() != ID && "duplicate rule ID");
     });
+
+    if (Filter.excludes(NewRule->getID()))
+        return;
 
     Rules.emplace_back(std::move(NewRule));
 }
