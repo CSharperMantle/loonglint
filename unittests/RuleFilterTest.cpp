@@ -18,7 +18,7 @@ static void expectCreateError(ArrayRef<StringRef> Patterns, StringRef MessagePar
     Expected<RuleFilter> MaybeFilter = RuleFilter::create(Patterns);
     EXPECT_FALSE(static_cast<bool>(MaybeFilter));
     const std::string Message = toString(MaybeFilter.takeError());
-    EXPECT_NE(Message.find(MessagePart.str()), std::string::npos) << Message;
+    EXPECT_NE(Message.find(MessagePart), std::string::npos) << Message;
 }
 
 TEST(RuleFilterTest, EmptyFilterExcludesNothing) {

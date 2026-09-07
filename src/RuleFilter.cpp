@@ -23,12 +23,12 @@ Expected<RuleFilter> RuleFilter::create(ArrayRef<StringRef> ExcludePatterns) {
         Regex R(Pattern);
         std::string ErrorMessage;
         if (!R.isValid(ErrorMessage))
-            return createStringError("invalid regular expression '" + Pattern +
+            return createStringError(Twine("invalid regular expression '") + Pattern +
                                      "': " + ErrorMessage);
         RF.Patterns.emplace_back(std::move(R));
     }
 
-    return std::move(RF);
+    return RF;
 }
 
 bool RuleFilter::excludes(StringRef RuleID) const {
