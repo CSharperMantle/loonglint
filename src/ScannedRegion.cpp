@@ -41,7 +41,8 @@ Expected<ScannedRegion> ScannedRegion::create(const DisassemblerTarget &DT, Arra
     MIA.resetState();
 
     size_t Pos = 0;
-    for (unsigned CellIndex = 0; Pos + DT.getCellSize() <= FullSize; CellIndex++) {
+    while (Pos + DT.getCellSize() <= FullSize) {
+        const unsigned CellIndex = static_cast<unsigned>(Pos / DT.getCellSize());
         const uint64_t InstAddress = Address + Pos;
         auto Decoded = DT.decodeInst(Bytes.slice(Pos), InstAddress);
         if (!Decoded) {
