@@ -1,16 +1,12 @@
 # Fixtures and documentation
 
-## 1. Test suite layout
+## 1. Layout
 
-- LoongArch-dependent lit fixtures live in `test/LoongArch/` (LLVM `MC/<Arch>/` convention). `test/CMakeLists.txt` runs `add_lit_testsuite(check-loonglint ...)` over the build directory — **lit discovers new fixture files automatically (recursively); adding a test never requires a CMake edit.** Arch-independent driver fixtures (pure argparsing, invalid-input rejections) sit directly in `test/` and are shared by all architectures.
-- Fixture kinds, by filename:
-   - `rule_<category>_<id>_match.s` — positive: the rule must fire N times.
-   - `rule_<category>_<id>_mismatch.s` — negative: near-misses must produce zero findings.
-   - Variants when needed: `_la32_match` / `_la32_mismatch` (LA32-legal inputs), `_boundary_mismatch` (off-by-one immediates, bounds). See `rule_integer_shift_add_alsl_d_*` for precedents.
-- Other fixtures (`cli_*`, `elf*`, `raw*`) cover the CLI and decoder plumbing; a rule change should not need them.
-- Tools available to RUN lines are declared as `DEPENDS` in `test/CMakeLists.txt` (`llvm-mc`, `FileCheck`, `not`, `yaml2obj`, `llvm-objcopy`, `loonglint`); `ld.lld` comes from the surrounding LLVM build and must exist on PATH.
+- LoongArch fixtures live in `test/LoongArch/`; arch-independent driver fixtures sit in `test/`. `add_lit_testsuite(check-loonglint ...)` discovers files recursively -- adding a test never needs a CMake edit.
+- Names: `rule_<category>_<id>_match.s` (positive, fires N times), `rule_<category>_<id>_mismatch.s` (near-misses, zero findings); variants `_la32_*`, `_boundary_mismatch`. Precedents: `rule_integer_shift_add_alsl_d_*`.
+- `cli_*`/`elf*`/`raw*` fixtures cover CLI and decoder plumbing; rule work should not touch them. RUN-line tools are `DEPENDS` in `test/CMakeLists.txt`; `ld.lld` must exist on PATH.
 
-## 2. Match fixture format
+## 2. Match fixture
 
 ```s
 ## One-line statement of which forms this file covers.
@@ -20,7 +16,6 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-## Optional per-group comments for sub-families.
 # CHECK-COUNT-6: [loongarch:memory/unsigned-load-pick]
 # CHECK: 6 finding(s)
 # CHECK: 6 loongarch:memory/unsigned-load-pick
@@ -33,13 +28,11 @@ _start:
   ...
 ```
 
-- The `RUN:` and `CHECK*:` comment lines are llvm-lit and FileCheck directives. These are to be prefixed with one hash symbol. Refer to <https://llvm.org/docs/CommandGuide/FileCheck.html> or `llvm/docs/CommandGuide/FileCheck.rst` in the LLVM tree for details about the usage of FileCheck.
-- Other comment lines are genuinely comments. Prefix them with *two* hash symbols to distinguish them from FileCheck directives.
-- The three `CHECK*:` lines are a contract: total count, total findings, and per-rule count. All three must agree with the number of matching windows in the file.
-- `not` is required because `loonglint` exits nonzero when it reports findings.
-- For LA32 coverage use `-triple=loongarch32-unknown-linux` and only LA32S-legal instructions (which means no `.D` forms, no 64-only immediatesl. Refer to the Manual for details).
+- `#`-prefixed lines are lit/FileCheck directives; real comments use `##`. `not` is required -- `loonglint` exits nonzero on findings.
+- The three `CHECK*` lines are a contract: total count, findings count, per-rule count. Finding IDs are `loongarch:`-prefixed, including inside `-E` patterns.
+- LA32: `-triple=loongarch32-unknown-linux`, LA32S-legal instructions only.
 
-## 3. Mismatch fixture format and the zero-findings discipline
+## 3. Mismatch fixture and the zero-findings discipline
 
 ```s
 ## Reject <what and why>.
@@ -52,48 +45,39 @@ _start:
 # CHECK: 0 finding(s)
 ```
 
-The assertion is **zero findings from every rule in the registry**, not just yours. This is where rule work most often goes wrong:
+Zero findings means zero from **every** rule, not just yours:
 
-- Every pair of adjacent instructions is a candidate window for every 2-instruction rule. A negative for your rule can be a positive for another. Real example: `ld.bu $t0, $a0, 0` followed by `bstrpick.d $t0, $t0, 7, 0` is a valid negative for `loongarch:memory/load-zero-extend` (unsigned load) but matches `loongarch:memory/unsigned-load-pick` exactly.
-- Before finalizing a negative, walk the registry in `LoongArchSpec::createRules()` and check the window against each rule that shares either opcode. Change a register, an immediate, or the opcode until nothing fires — and know *why* nothing fires.
-- Prefer negatives that each isolate one constraint of your rule (wrong immediate, wrong destination, aliased source, off-by-one bound) rather than one catch-all blob.
+- Adjacent pairs are candidate windows for every 2-instruction rule. Real example: `ld.bu $t0, $a0, 0` + `bstrpick.d $t0, $t0, 7, 0` is a valid negative for `loongarch:memory/load-zero-extend` but matches `loongarch:memory/unsigned-load-pick`.
+- Before finalizing, walk the registry in `LoongArchSpec::createRules()` against every rule sharing an opcode; adjust register/immediate/opcode until nothing fires, and know why.
+- Isolate one constraint per negative (wrong immediate, destination, aliasing, off-by-one).
+- FileCheck collapses whitespace; use exact counts and exact ID lines, never `{{.*}}`.
 
-FileCheck notes: CHECK directives collapse runs of whitespace, so indentation never needs to match; do not use `{{.*}}` patterns — exact counts and exact ID lines only.
+## 4. RULES.md
 
-## 4. RULES.md discipline
-
-RULES.md is the user-facing catalog. One `## XRule` section per rule (`loongarch:category/name` in the heading), sections ordered exactly like registration in `LoongArchSpec::createRules()` — insert new sections at the matching position.
-
-Section structure:
+One `## XRule` section per rule (`loongarch:category/name` heading), ordered like `createRules()`.
 
 ````markdown
 ## `XRule` (`loongarch:category/name`)
 
 ```asm
-<pattern asm, lowercase mnemonics, matching what fixtures contain>
+<pattern asm, lowercase, matching fixtures>
 # ->
 <replacement>
 ```
 
 ### Constraints
 
-<arch availability, then bullet list; chain bullets with "and"; capitalize the first character of each item>
+<availability, then bullets chained with "and">
 
-<one-paragraph semantic justification>
+<semantic justification>
 
 ### Evidence
 
-* <exact URL permalink into LLVM/GCC source that emits or peephole-optimizes this shape>
+* <exact permalink into LLVM/GCC source, or omit the section>
 ````
 
-Evidence policy:
-
-- Evidence exists to show the pattern is real compiler behavior, not to re-teach instruction semantics. Never paraphrase the architecture manual there — well-known semantics add no value.
-- Either link the exact source location (LLVM `LoongArchInstrInfo.td` / `LoongArchISelDAGToDAG.cpp` patterns, GCC `loongarch.md` peepholes) or omit the Evidence section entirely.
-- Pattern asm blocks use the same lowercase mnemonic style as fixtures; comments inside the block explain accepted variants (`# srai.d is accepted in place of srli.d ...`).
-
-If the user keeps a proposal/backlog document for candidate patterns, ask where it lives and mark the newly shipped rule there; do not guess at file names.
+Evidence shows the pattern is real compiler behavior; never paraphrase the ISA manual there. Pattern asm matches fixture style. If the user keeps a candidate/backlog list, ask where and mark the rule shipped; do not guess file names.
 
 ## 5. Unit tests
 
-`unittests/MCInstMatcherTest.cpp` (built as `LoongLintUnitTests`, run by `check-loonglint`) covers matcher behavior directly. Only add tests here if the new case is genuinely a matcher DSL exercise. Generally speaking, this would be rare.
+`unittests/MCInstMatcherTest.cpp` covers the matcher DSL directly; add tests only for genuine DSL exercises. Generally speaking, adding new cases would be rare.

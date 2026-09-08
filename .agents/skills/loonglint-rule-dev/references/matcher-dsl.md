@@ -1,40 +1,36 @@
 # The low-level instruction matcher DSL (`LowLevelInstMatcherDSL`)
 
-The DSL lives in `include/loonglint/MCInstMatcher.hpp`. It is a derived work of LLVM BOLT's `LowLevelInstMatcherDSL` (see the header comment for provenance). It matches a single `llvm::MCInst` against an opcode plus a per-operand matcher list, and captures operands into reusable matcher objects.
+Lives in `include/loonglint/MCInstMatcher.hpp`; derived from LLVM BOLT's DSL (see header comment). Matches one `llvm::MCInst` against an opcode plus a per-operand matcher list, capturing operands into reusable matcher objects.
 
-Reference material when unsure about an instruction: the canonical operand order and immediate encodings are defined in `LoongArchInstrInfo.td` in the LLVM source tree; opcode enum names (`LoongArch::LD_BU`, `LoongArch::BSTRPICK_D`, ...) are generated into `LoongArchGenInstrInfo.inc` in the build tree. Include `"MCTargetDesc/LoongArchMCTargetDesc.h"` (already on the include path via the tool target) to use them.
+Opcode names (`LoongArch::LD_BU`, `LoongArch::BSTRPICK_D`, ...) are generated into `LoongArchGenInstrInfo.inc`; include `"MCTargetDesc/LoongArchMCTargetDesc.h"` to use them. Canonical operand order and immediate encodings live in `LoongArchInstrInfo.td` in the LLVM source tree.
+
+**Namespace hazard:** rule cpps sit in `namespace loonglint::LoongArch`, which shadows `llvm::LoongArch`. Declare `namespace LoongArch = ::llvm::LoongArch;` inside it (every exemplar does) or `LoongArch::ADDI_D`-style references fail to compile.
 
 ## 1. Core semantics
 
-A matcher that captures all three operands of the `LD.D rd, rj, si12` is as follows:
-
 ```cpp
-// Define matcher objects.
 Reg RdReg, RjReg;
 Imm Si12Imm;
-// Perform the match.
 if (matchInst(Inst, LoongArch::LD_D, RdReg, RjReg, Si12Imm)) {
-    // |Inst| matches the pattern. Now fetching the matched operands.
     const MCRegister Rd = RdReg.get();
-    const MCRegister Rj = RjReg.get();
     const int64_t Si12 = Si12Imm.get();
-    // Use the captured value.
     ...
 }
 ```
 
-- `matchInst(Inst, Opcode, matchers...)` fails unless the instance's opcode equals `Opcode` **and** `Inst.getNumOperands() == sizeof...(matchers)`. Operand count is exact -- there is no variadic slack.
-- Each matcher is offered the corresponding `MCOperand` in order. A matcher with no captured value binds (captures) the operand value; a matcher that already holds a value succeeds only if the operand equals it (and re-captures, keeping the same value).
-- All-or-nothing with rollback: before matching, every matcher saves its state; if any operand fails, every matcher is restored to its saved state. A failed `matchInst` therefore leaves no trace. A successful one leaves all captures in place.
-- Captures persist across `matchInst` calls within one `match()` invocation. This is the feature that makes cross-instruction dataflow constraints possible -- and the easiest way to write an unintended constraint if you reuse a matcher variable casually.
+- `matchInst(Inst, Opcode, matchers...)` fails unless the opcode equals `Opcode` **and** the operand count is exactly `sizeof...(matchers)` -- no variadic slack.
+- A matcher with no captured value binds; one that already holds a value succeeds only on equality.
+- All-or-nothing with rollback: any operand failure restores every matcher. A failed `matchInst` leaves no trace; a successful one leaves all captures.
+- Captures persist across `matchInst` calls within one `match()` -- this enables cross-instruction dataflow constraints and is also the easiest way to write an unintended constraint.
 
 ## 2. Matchers
 
-* `Reg` -> Binds `llvm::MCRegister` -> Used for register operands.
-* `Imm` -> Binds `int64_t` -> Used for immediate operands.
-* `Skip` -> Binds nothing -> Used for skipping the current slot.
+- `Reg` binds `llvm::MCRegister`; `Imm` binds `int64_t`; `Skip` binds nothing.
+- All take an optional seed that turns them into equality checks: `Imm(0)`, `Reg(LoongArch::R0)`.
+- Default-constructed `Reg()`/`Imm()` are typed wildcards: they capture and also assert the operand kind. Prefer them over `Skip()` when the kind itself should be checked.
+- `get()` asserts (debug) that a capture happened; capture into locals right after the match and do semantic checks on plain values.
 
-All three take an optional seed that pre-binds a value, turning the matcher into a pure equality check: `Imm(0)` matches only an immediate 0, `Reg(LoongArch::R0)` only the zero register. For example, to match and capture the destination register of `addi.d rd, $zero, 1`:
+For example, to match and capture the destination register of `addi.d rd, $zero, 1`:
 
 ```cpp
 Reg RdReg;
@@ -43,30 +39,22 @@ if (matchInst(Inst, LoongArch::LD_D, RdReg, Reg(LoongArch::R0), Imm(1))) {
 }
 ```
 
-**Default-constructed `Reg()` / `Imm()` are typed wildcards:** They match any operand of the right kind and capture the value. Prefer them over `Skip()` when the matcher would otherwise not type-check the operand (e.g. `matchInst(Inst, LoongArch::LD_D, RdReg, Reg(), Skip())` on a load also asserts operand 1 is a register, and `..., Reg(), Imm()` asserts the second operand kind split).
+## 3. Constraint reuse
 
-**Reading captures:** `Reg::get()` / `Imm::get()` return the bound value; they assert (debug builds) that the matcher actually captured something. Capture into locals immediately after a successful match (e.g. `const MCRegister Rd = RdReg.get();`) and do the semantic checks on plain values, not on matchers.
-
-## 3. The constraint-reuse idiom
-
-Bind matchers on the producer instruction, then pass the same objects again on the consumer instruction to enforce dataflow:
+Bind matchers on the producer, pass the same objects on the consumer to enforce dataflow:
 
 ```cpp
 Reg RdReg, RjReg;
 Imm FirstImm;
 if (!matchInst(Inst[0], LoongArch::ADDI_W, RdReg, RjReg, FirstImm))
     return std::nullopt;
-
-// ADDI Rd, Rd, Imm: passing RdReg twice requires both the destination and the base register to equal the first instruction's destination.
+// Passing RdReg twice requires destination == base == the producer's destination.
 Imm SecondImm;
 if (!matchInst(Inst[1], LoongArch::ADDI_W, RdReg, RdReg, SecondImm))
     return std::nullopt;
-
-// Now we have the whole pattern matched.
-...
 ```
 
-If the consumer match fails, rollback restores the matchers. The pattern to avoid is reusing a bound matcher in a *later alternative attempt* where the earlier capture is not meant to constrain: either use fresh matchers per attempt (this is what per-iteration loop-local matchers in tuple-table rules do) or reset by construction. For example, the following structure can be used to trial-match multiple patterns:
+On consumer failure, rollback restores the matchers. Do not reuse a bound matcher across *alternative attempts* where the earlier capture must not constrain: use fresh matchers per attempt (tuple-table rules use loop-local matchers), or trial-match patterns in `do { ... break; ... } while (0);` blocks that return on success.
 
 ```cpp
 bool matches(...) {
@@ -98,22 +86,22 @@ bool matches(...) {
 }
 ```
 
-## 4. Structural patterns, with exemplars
+## 4. Structural patterns (with exemplars)
 
-1. **Switch-on-opcode dispatch** (`src/Rules/LoongArch/ShiftMaskRule.cpp`). Classify the second instruction's opcode family first, derive width-dependent constants (`CountMask`, `MinMsb`), then match the first instruction against alternatives. Use when a family of opcodes shares one shape.
-2. **Tuple-table sweep** (`src/Rules/LoongArch/LoadZeroExtendRule.cpp`, `src/Rules/LoongArch/AddiPairRule.cpp`, `src/Rules/LoongArch/UnsignedLoadPickRule.cpp`). Enumerate homogeneous variants as a braced initializer of tuples/pairs, loop, and `continue` on non-match. Put per-row arch flags in the table (`Needs64`) or split the loop by the injected spec (`LoongAS.is64()`; see `UnsignedLoadPickRule`'s LA64/LA32 branches). Loop-local matchers keep attempts independent.
-3. **Multi-arm sequencing** (`src/Rules/LoongArch/BitExtractRule.cpp`). When one rule accepts several orders (mask-first, shift-first), try each arm in a `do { ... break; ... } while (0);` block that `return`s on success and `break`s to the next arm. Each arm starts with fresh matchers.
-4. **Try-helper lambda** (`src/Rules/LoongArch/AddressLoadRule.cpp`'s `TryLoad`). When many candidate opcodes share one match-and-build body, capture the `Rule::Match` under construction in a lambda and call it per candidate opcode; return the result on the first success.
-5. **Cross-window constraint** (`src/Rules/LoongArch/ShiftMaskRule.cpp`). The mask instruction's destination matcher is reused in slots 1 and 3 of the shift match (`matchInst(S, Op, CountRdReg, ShRjReg, CountRdReg)`), forcing "the masked value is the shift count" in one call, followed by an explicit aliasing rejection (`ShRj == CountRd`).
+1. **Switch-on-opcode dispatch** (`src/Rules/LoongArch/ShiftMaskRule.cpp`): classify the second instruction's opcode family, derive width-dependent constants, then match the first against alternatives.
+2. **Tuple-table sweep** (`src/Rules/LoongArch/LoadZeroExtendRule.cpp`, `AddiPairRule.cpp`, `UnsignedLoadPickRule.cpp`): homogeneous variants as a braced initializer of tuples, loop, `continue` on non-match; per-row arch flags in the table or a `LoongAS.is64()` split; loop-local matchers.
+3. **Multi-arm sequencing** (`src/Rules/LoongArch/BitExtractRule.cpp`): several accepted orders tried in `do { ... break; ... } while (0);` blocks; fresh matchers per arm.
+4. **Try-helper lambda** (`src/Rules/LoongArch/AddressLoadRule.cpp`'s `TryLoad`): one match-and-build body invoked per candidate opcode; first success wins.
+5. **Cross-window constraint** (`src/Rules/LoongArch/ShiftMaskRule.cpp`): a producer destination matcher reused in two slots of the consumer match, plus an explicit aliasing rejection.
 
 ## 5. Debugging a non-matching matcher
 
 Work outward:
 
-1. Assemble the exact sequence with `llvm-mc -triple=loongarch64-unknown-linux` and disassemble it back -- confirm the two opcodes and operand shapes you assume are what the decoder produces.
-2. Check operand count first: the matcher silently returns false on count mismatch. Count operands in the `.td` definition, not in the assembly text.
-3. Check for stale captures: a matcher reused from an earlier successful match now constrains instead of capturing. Give the attempt fresh matchers.
-4. Check operand kinds: `Reg` fails on an immediate operand and vice versa; use `Reg()` / `Imm()` typed wildcards to surface kind mismatches.
-5. If the matcher is right but the rule still rejects, instrument the semantic checks -- they are plain C++ after the matches and are the usual real culprit (`Lsb < 1`, range checks, aliasing rejections).
+1. Assemble the exact sequence with `llvm-mc` and disassemble it back -- confirm opcodes and operand shapes.
+2. Operand count first: the matcher fails silently on count mismatch. Count operands in the `.td`, not the assembly.
+3. Stale captures: a matcher reused from an earlier success now constrains; give the attempt fresh matchers.
+4. Operand kinds: `Reg` fails on an immediate and vice versa; typed wildcards surface kind mismatches.
+5. Matcher right but rule still rejects? Instrument the semantic checks -- plain C++ after the matches is the usual real culprit.
 
 `unittests/MCInstMatcherTest.cpp` covers the DSL behavior.
