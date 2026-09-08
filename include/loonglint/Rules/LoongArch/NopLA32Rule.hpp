@@ -3,7 +3,7 @@
 #ifndef LOONGLINT_RULES_LOONGARCH_NOPLA32RULE_HPP
 #define LOONGLINT_RULES_LOONGARCH_NOPLA32RULE_HPP
 
-#include "loonglint/LoongArchSpec.hpp"
+#include "loonglint/LoongArch/LoongArchSpec.hpp"
 #include "loonglint/Rule.hpp"
 
 namespace loonglint::LoongArch {

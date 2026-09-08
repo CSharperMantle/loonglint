@@ -3,7 +3,7 @@
 #ifndef LOONGLINT_RULES_LOONGARCH_BITREVERSERULE_HPP
 #define LOONGLINT_RULES_LOONGARCH_BITREVERSERULE_HPP
 
-#include "loonglint/LoongArchSpec.hpp"
+#include "loonglint/LoongArch/LoongArchSpec.hpp"
 #include "loonglint/Rule.hpp"
 
 namespace loonglint::LoongArch {

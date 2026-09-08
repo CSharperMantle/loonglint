@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "loonglint/DisassemblerTarget.hpp"
-#include "loonglint/LoongArchSpec.hpp"
+#include "loonglint/LoongArch/LoongArchSpec.hpp"
 #include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
@@ -253,9 +253,9 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
 static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
     if (Name == "loongarch64")
-        return makeLoongArchSpec(true);
+        return LoongArch::makeLoongArchSpec(true);
     if (Name == "loongarch32")
-        return makeLoongArchSpec(false);
+        return LoongArch::makeLoongArchSpec(false);
     return createStringError("unknown architecture '%s'", Name.str().c_str());
 }
 
@@ -288,7 +288,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
         return createStringError("unsupported input format for '%s': expected ELF",
                                  opts::InputFile.c_str());
 
-    std::unique_ptr<ArchSpec> AS = makeLoongArchSpec(TheELF->is64Bit());
+    std::unique_ptr<ArchSpec> AS = LoongArch::makeLoongArchSpec(TheELF->is64Bit());
 
     if (TheELF->getEMachine() != AS->getELFMachine())
         return createStringError("unsupported ELF machine in '%s': expected LoongArch",

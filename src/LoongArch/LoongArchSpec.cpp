@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "loonglint/LoongArchSpec.hpp"
+#include "loonglint/LoongArch/LoongArchSpec.hpp"
 
 #include "loonglint/Rules/LoongArch/AddiPairRule.hpp"
 #include "loonglint/Rules/LoongArch/AddressLoadRule.hpp"
@@ -35,6 +35,8 @@
 using namespace llvm;
 
 namespace loonglint {
+
+namespace LoongArch {
 
 LoongArchSpec::LoongArchSpec(bool Is64) : Is64(Is64) {}
 
@@ -91,5 +93,7 @@ SmallVector<std::unique_ptr<Rule>, 0> LoongArchSpec::createRules() const {
 std::unique_ptr<ArchSpec> makeLoongArchSpec(bool Is64) {
     return std::make_unique<LoongArchSpec>(Is64);
 }
+
+} // namespace LoongArch
 
 } // namespace loonglint

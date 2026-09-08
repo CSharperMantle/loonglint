@@ -31,7 +31,7 @@ add_llvm_library(LoongLint
   STATIC
   DISABLE_PCH_REUSE
   src/DisassemblerTarget.cpp
-  src/LoongArchSpec.cpp
+  src/LoongArch/LoongArchSpec.cpp
   src/RuleFilter.cpp
   src/RuleManager.cpp
   src/Rules/LoongArch/AddiPairRule.cpp

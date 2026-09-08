@@ -2,7 +2,7 @@
 
 #include "loonglint/Rules/LoongArch/ByteReverseRule.hpp"
 
-#include "loonglint/LoongArchSpec.hpp"
+#include "loonglint/LoongArch/LoongArchSpec.hpp"
 #include "loonglint/MCInstMatcher.hpp"
 
 #include "MCTargetDesc/LoongArchMCTargetDesc.h"

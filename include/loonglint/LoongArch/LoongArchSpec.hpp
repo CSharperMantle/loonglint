@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef LOONGLINT_LOONGARCHSPEC_HPP
-#define LOONGLINT_LOONGARCHSPEC_HPP
+#ifndef LOONGLINT_LOONGARCH_LOONGARCHSPEC_HPP
+#define LOONGLINT_LOONGARCH_LOONGARCHSPEC_HPP
 
 #include "loonglint/ArchSpec.hpp"
 
@@ -12,6 +12,8 @@
 #include <memory>
 
 namespace loonglint {
+
+namespace LoongArch {
 
 class LoongArchSpec final : public ArchSpec {
   public:
@@ -33,6 +35,8 @@ class LoongArchSpec final : public ArchSpec {
 };
 
 std::unique_ptr<ArchSpec> makeLoongArchSpec(bool Is64);
+
+} // namespace LoongArch
 
 } // namespace loonglint
 
