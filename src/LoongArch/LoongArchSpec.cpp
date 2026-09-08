@@ -31,12 +31,20 @@
 #include "llvm/BinaryFormat/ELF.h"
 
 #include <memory>
+#include <type_traits>
+#include <variant>
 
 using namespace llvm;
 
 namespace loonglint {
 
 namespace LoongArch {
+
+namespace {
+
+template <class... T> constexpr bool AlwaysFalse = false;
+
+} // namespace
 
 LoongArchSpec::LoongArchSpec(bool Is64) : Is64(Is64) {}
 
@@ -90,16 +98,22 @@ SmallVector<std::unique_ptr<Rule>, 0> LoongArchSpec::createRules() const {
     return Rules;
 }
 
-void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, StringRef Name) {
-    if (Name == "loongarch64")
-        AS = std::make_unique<LoongArchSpec>(true);
-    else if (Name == "loongarch32")
-        AS = std::make_unique<LoongArchSpec>(false);
-}
-
-void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, uint16_t ELFMachine, bool Is64) {
-    if (ELFMachine == ELF::EM_LOONGARCH)
-        AS = std::make_unique<LoongArchSpec>(Is64);
+void queryArchSpec(std::unique_ptr<ArchSpec> &AS, const ArchQuery &AQ) {
+    std::visit(
+        [&](auto &&Data) {
+            using T = std::decay_t<decltype(Data)>;
+            if constexpr (std::is_same_v<T, ArchQuery::Raw>) {
+                if (Data.Name == "loongarch64")
+                    AS = std::make_unique<LoongArchSpec>(true);
+                else if (Data.Name == "loongarch32")
+                    AS = std::make_unique<LoongArchSpec>(false);
+            } else if constexpr (std::is_same_v<T, ArchQuery::ELF>) {
+                if (Data.EMachine == ELF::EM_LOONGARCH)
+                    AS = std::make_unique<LoongArchSpec>(Data.Is64);
+            } else
+                static_assert(AlwaysFalse<T>, "non-exhaustive visitor");
+        },
+        AQ.Data);
 }
 
 } // namespace LoongArch

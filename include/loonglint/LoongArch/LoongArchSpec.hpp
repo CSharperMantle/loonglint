@@ -34,8 +34,7 @@ class LoongArchSpec final : public ArchSpec {
     bool Is64;
 };
 
-void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, llvm::StringRef Name);
-void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, uint16_t ELFMachine, bool Is64);
+void queryArchSpec(std::unique_ptr<ArchSpec> &AS, const ArchQuery &AQ);
 
 } // namespace LoongArch
 

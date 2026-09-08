@@ -253,24 +253,11 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
     return SR;
 }
 
-static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
+static std::unique_ptr<ArchSpec> makeArchSpec(const ArchQuery &AQ) {
     std::unique_ptr<ArchSpec> AS;
-#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::dispatchSpecCases(AS, Name);
+#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::queryArchSpec(AS, AQ);
 #include "loonglint/ArchConfig.def"
 #undef LOONGLINT_ARCH
-    if (!AS)
-        return createStringError("unknown architecture '%s'", Name.str().c_str());
-    return AS;
-}
-
-static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(uint16_t ELFMachine, bool Is64) {
-    std::unique_ptr<ArchSpec> AS;
-#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::dispatchSpecCases(AS, ELFMachine, Is64);
-#include "loonglint/ArchConfig.def"
-#undef LOONGLINT_ARCH
-    if (!AS)
-        return createStringError("unsupported ELF machine in '%s': expected LoongArch",
-                                 opts::InputFile.c_str());
     return AS;
 }
 
@@ -278,11 +265,12 @@ static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer, const RuleFilter &F
     if (opts::Arch.empty())
         return createStringError("--arch is required for raw input");
 
-    Expected<std::unique_ptr<ArchSpec>> AS = makeArchSpec(opts::Arch);
-    if (auto E = AS.takeError())
-        return E;
+    const ArchQuery AQ = {ArchQuery::Raw{opts::Arch}};
+    std::unique_ptr<ArchSpec> AS = makeArchSpec(AQ);
+    if (!AS)
+        return createStringError("unknown architecture '%s'", opts::Arch.c_str());
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(**AS);
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
         return E;
 
@@ -303,9 +291,16 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
         return createStringError("unsupported input format for '%s': expected ELF",
                                  opts::InputFile.c_str());
 
-    Expected<std::unique_ptr<ArchSpec>> AS = makeArchSpec(TheELF->getEMachine(), TheELF->is64Bit());
-    if (auto E = AS.takeError())
+    Expected<SubtargetFeatures> Features = TheELF->getFeatures();
+    if (auto E = Features.takeError())
         return E;
+
+    const ArchQuery AQ = {
+        ArchQuery::ELF{TheELF->getEMachine(), TheELF->is64Bit(), std::move(*Features)}};
+    std::unique_ptr<ArchSpec> AS = makeArchSpec(AQ);
+    if (!AS)
+        return createStringError("unsupported ELF machine in '%s': expected LoongArch",
+                                 opts::InputFile.c_str());
 
     if (!is_contained({ELF::ET_EXEC, ELF::ET_DYN}, TheELF->getEType()))
         return createStringError("unsupported ELF type in '%s': expected ET_EXEC or ET_DYN",
@@ -313,7 +308,7 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(**AS);
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
         return E;
 
