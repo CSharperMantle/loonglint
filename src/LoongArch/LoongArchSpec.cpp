@@ -90,10 +90,6 @@ SmallVector<std::unique_ptr<Rule>, 0> LoongArchSpec::createRules() const {
     return Rules;
 }
 
-std::unique_ptr<ArchSpec> makeLoongArchSpec(bool Is64) {
-    return std::make_unique<LoongArchSpec>(Is64);
-}
-
 } // namespace LoongArch
 
 } // namespace loonglint

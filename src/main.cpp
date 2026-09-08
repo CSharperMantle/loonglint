@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "loonglint/ArchSpec.hpp"
 #include "loonglint/DisassemblerTarget.hpp"
-#include "loonglint/LoongArch/LoongArchSpec.hpp"
 #include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
+
+#include "loonglint/ArchIncludes.inl"
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
@@ -252,11 +254,24 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 }
 
 static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
-    if (Name == "loongarch64")
-        return LoongArch::makeLoongArchSpec(true);
-    if (Name == "loongarch32")
-        return LoongArch::makeLoongArchSpec(false);
-    return createStringError("unknown architecture '%s'", Name.str().c_str());
+    std::unique_ptr<ArchSpec> AS;
+#define LOONGLINT_ARCH(ArchName) LOONGLINT_##ArchName##_SPEC_CASES(AS)
+#include "loonglint/ArchConfig.def"
+#undef LOONGLINT_ARCH
+    if (!AS)
+        return createStringError("unknown architecture '%s'", Name.str().c_str());
+    return AS;
+}
+
+static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(uint16_t ELFMachine, bool Is64) {
+    std::unique_ptr<ArchSpec> AS;
+#define LOONGLINT_ARCH(ArchName) LOONGLINT_##ArchName##_ELF_SPEC_CASES(AS, ELFMachine, Is64)
+#include "loonglint/ArchConfig.def"
+#undef LOONGLINT_ARCH
+    if (!AS)
+        return createStringError("unsupported ELF machine in '%s': expected LoongArch",
+                                 opts::InputFile.c_str());
+    return AS;
 }
 
 static Expected<StatsReport> lintRaw(MemoryBufferRef Buffer, const RuleFilter &Filter) {
@@ -288,18 +303,17 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
         return createStringError("unsupported input format for '%s': expected ELF",
                                  opts::InputFile.c_str());
 
-    std::unique_ptr<ArchSpec> AS = LoongArch::makeLoongArchSpec(TheELF->is64Bit());
+    Expected<std::unique_ptr<ArchSpec>> AS = makeArchSpec(TheELF->getEMachine(), TheELF->is64Bit());
+    if (auto E = AS.takeError())
+        return E;
 
-    if (TheELF->getEMachine() != AS->getELFMachine())
-        return createStringError("unsupported ELF machine in '%s': expected LoongArch",
-                                 opts::InputFile.c_str());
     if (!is_contained({ELF::ET_EXEC, ELF::ET_DYN}, TheELF->getEType()))
         return createStringError("unsupported ELF type in '%s': expected ET_EXEC or ET_DYN",
                                  opts::InputFile.c_str());
 
     assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
 
-    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
+    Expected<DisassemblerTarget> DT = DisassemblerTarget::create(**AS);
     if (auto E = DT.takeError())
         return E;
 
@@ -423,9 +437,12 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    InitializeAllTargetInfos();
-    InitializeAllTargetMCs();
-    InitializeAllDisassemblers();
+#define LOONGLINT_ARCH(ArchName)                                                                   \
+    LLVMInitialize##ArchName##TargetInfo();                                                        \
+    LLVMInitialize##ArchName##TargetMC();                                                          \
+    LLVMInitialize##ArchName##Disassembler();
+#include "loonglint/ArchConfig.def"
+#undef LOONGLINT_ARCH
 
     Expected<StatsReport> SR = lintInput(*TheRuleFilter);
     if (auto E = SR.takeError()) {

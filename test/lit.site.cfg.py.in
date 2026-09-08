@@ -7,6 +7,7 @@ import os
 config.llvm_src_root = path(r"@LLVM_SOURCE_DIR@")
 config.llvm_obj_root = path(r"@LLVM_BINARY_DIR@")
 config.llvm_tools_dir = lit_config.substitute(path(r"@LLVM_TOOLS_DIR@"))
+config.root.targets = "@LLVM_TARGETS_TO_BUILD@"
 config.loonglint_src_root = path(r"@LOONGLINT_SOURCE_DIR@")
 config.loonglint_obj_root = path(r"@LOONGLINT_BINARY_DIR@")
 
