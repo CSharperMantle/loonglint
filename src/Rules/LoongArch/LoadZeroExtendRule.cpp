@@ -21,7 +21,7 @@ namespace LoongArch = ::llvm::LoongArch;
 LoadZeroExtendRule::LoadZeroExtendRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef LoadZeroExtendRule::getID() const {
-    return "memory/load-zero-extend";
+    return "loongarch:memory/load-zero-extend";
 }
 
 StringRef LoadZeroExtendRule::getDescription() const {

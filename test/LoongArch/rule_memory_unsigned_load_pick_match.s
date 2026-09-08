@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers LD.{BU,HU,WU} and LDX.{BU,HU,WU} followed by the matching BSTRPICK.D.
-# CHECK-COUNT-6: [memory/unsigned-load-pick]
+# CHECK-COUNT-6: [loongarch:memory/unsigned-load-pick]
 # CHECK: 6 finding(s)
-# CHECK: 6 memory/unsigned-load-pick
+# CHECK: 6 loongarch:memory/unsigned-load-pick
 
 .text
 .globl _start

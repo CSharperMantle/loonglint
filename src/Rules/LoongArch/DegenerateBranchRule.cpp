@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef DegenerateBranchRule::getID() const {
-    return "control/degenerate-branch";
+    return "loongarch:control/degenerate-branch";
 }
 
 StringRef DegenerateBranchRule::getDescription() const {

@@ -7,9 +7,9 @@
 
 ## Covers SRLI/SRAI in .W and .D with contiguous low masks (shift-first),
 ## plus the mask-first order (ANDI then SRLI).
-# CHECK-COUNT-5: [integer/bit-extract]
+# CHECK-COUNT-5: [loongarch:integer/bit-extract]
 # CHECK: 5 finding(s)
-# CHECK: 5 integer/bit-extract
+# CHECK: 5 loongarch:integer/bit-extract
 
 .text
 .globl _start

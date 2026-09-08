@@ -5,7 +5,7 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-# CHECK: {{.*}}: fuse shift and add into ALSL.D [integer/shift-add-alsl-d]
+# CHECK: {{.*}}: fuse shift and add into ALSL.D [loongarch:integer/shift-add-alsl-d]
 # CHECK-NEXT: {{.*}}slli.d{{.*}}$t0, $a0, 1
 # CHECK-NEXT: {{.*}}add.d{{.*}}$t0, $t0, $a1
 # CHECK-NEXT: {{.*}}alsl.d{{.*}}$t0, $a0, $a1, 1
@@ -19,7 +19,7 @@
 # CHECK-NEXT: {{.*}}add.d{{.*}}$t2, $t2, $a6
 # CHECK-NEXT: {{.*}}alsl.d{{.*}}$t2, $a6, $a6, 3
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/shift-add-alsl-d
+# CHECK: 4 loongarch:integer/shift-add-alsl-d
 
 .text
 .globl _start

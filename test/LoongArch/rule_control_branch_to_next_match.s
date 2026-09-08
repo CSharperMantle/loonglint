@@ -5,7 +5,7 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-# CHECK-COUNT-2: [control/branch-to-next]
+# CHECK-COUNT-2: [loongarch:control/branch-to-next]
 
 .text
 .globl _start

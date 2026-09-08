@@ -7,9 +7,9 @@
 
 ## Covers LD.B+EXT.W.B, LD.H+EXT.W.H, LD.W+{ADDI.W,SLLI.W}, and
 ## LDPTR.W+{ADDI.W,SLLI.W} rd,rd,0.
-# CHECK-COUNT-6: [memory/load-extend]
+# CHECK-COUNT-6: [loongarch:memory/load-extend]
 # CHECK: 6 finding(s)
-# CHECK: 6 memory/load-extend
+# CHECK: 6 loongarch:memory/load-extend
 
 .text
 .globl _start

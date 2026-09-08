@@ -19,7 +19,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef ShiftChainRule::getID() const {
-    return "integer/shift-chain";
+    return "loongarch:integer/shift-chain";
 }
 
 StringRef ShiftChainRule::getDescription() const {

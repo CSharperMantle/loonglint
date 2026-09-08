@@ -8,7 +8,7 @@
 
 # RUN: not loonglint --input-format=raw --arch=loongarch64 --exclude-file %t.exclude %t.bin | FileCheck %s --check-prefix=FILE-ONLY
 # FILE-ONLY: 1 finding(s)
-# FILE-ONLY-NEXT: 1 control/branch-to-next
+# FILE-ONLY-NEXT: 1 loongarch:control/branch-to-next
 # FILE-ONLY-NOT: integer/nop
 
 # RUN: loonglint --input-format=raw --arch=loongarch64 --exclude-file %t.exclude -E control/ %t.bin | FileCheck %s --check-prefix=FILE-UNION

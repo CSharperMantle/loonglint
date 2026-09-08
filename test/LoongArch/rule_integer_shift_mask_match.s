@@ -7,9 +7,9 @@
 
 ## Covers SLL/SRL/SRA/ROTR in .W and .D, superset count masks, and the
 ## LA64 BSTRPICK.D count-mask form.
-# CHECK-COUNT-10: [integer/shift-mask]
+# CHECK-COUNT-10: [loongarch:integer/shift-mask]
 # CHECK: 10 finding(s)
-# CHECK: 10 integer/shift-mask
+# CHECK: 10 loongarch:integer/shift-mask
 
 .text
 .globl _start

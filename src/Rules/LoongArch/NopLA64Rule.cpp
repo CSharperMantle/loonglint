@@ -16,7 +16,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef NopLA64Rule::getID() const {
-    return "integer/nop-la64";
+    return "loongarch:integer/nop-la64";
 }
 
 StringRef NopLA64Rule::getDescription() const {

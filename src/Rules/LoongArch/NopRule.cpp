@@ -15,7 +15,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef NopRule::getID() const {
-    return "integer/nop";
+    return "loongarch:integer/nop";
 }
 
 StringRef NopRule::getDescription() const {

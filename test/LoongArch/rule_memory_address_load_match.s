@@ -15,7 +15,7 @@
 # CHECK: ldptr.w $t7, $a7, 24
 # CHECK: ldptr.d $s0, $a0, 24
 # CHECK: 9 finding(s)
-# CHECK: 9 memory/address-load
+# CHECK: 9 loongarch:memory/address-load
 
 .text
 .globl _start

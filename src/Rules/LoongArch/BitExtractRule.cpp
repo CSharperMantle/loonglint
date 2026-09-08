@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef BitExtractRule::getID() const {
-    return "integer/bit-extract";
+    return "loongarch:integer/bit-extract";
 }
 
 StringRef BitExtractRule::getDescription() const {

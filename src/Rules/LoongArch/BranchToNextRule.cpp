@@ -9,7 +9,7 @@ using namespace llvm;
 namespace loonglint::LoongArch {
 
 StringRef BranchToNextRule::getID() const {
-    return "control/branch-to-next";
+    return "loongarch:control/branch-to-next";
 }
 
 StringRef BranchToNextRule::getDescription() const {

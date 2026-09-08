@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers both operand orders and .W/.D widths.
-# CHECK-COUNT-4: [integer/shift-self-add]
+# CHECK-COUNT-4: [loongarch:integer/shift-self-add]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/shift-self-add
+# CHECK: 4 loongarch:integer/shift-self-add
 
 .text
 .globl _start

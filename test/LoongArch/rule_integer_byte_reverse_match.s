@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers both operand orders.
-# CHECK-COUNT-2: [integer/byte-reverse]
+# CHECK-COUNT-2: [loongarch:integer/byte-reverse]
 # CHECK: 2 finding(s)
-# CHECK: 2 integer/byte-reverse
+# CHECK: 2 loongarch:integer/byte-reverse
 
 .text
 .globl _start

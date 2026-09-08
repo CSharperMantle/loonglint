@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Byte, halfword, word zero-extension via BSTRPICK.D.
-# CHECK-COUNT-3: [memory/load-zero-extend]
+# CHECK-COUNT-3: [loongarch:memory/load-zero-extend]
 # CHECK: 3 finding(s)
-# CHECK: 3 memory/load-zero-extend
+# CHECK: 3 loongarch:memory/load-zero-extend
 
 .text
 .globl _start

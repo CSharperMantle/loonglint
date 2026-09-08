@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers both operand orders and 4B/8B widths.
-# CHECK-COUNT-4: [integer/bit-reverse]
+# CHECK-COUNT-4: [loongarch:integer/bit-reverse]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/bit-reverse
+# CHECK: 4 loongarch:integer/bit-reverse
 
 .text
 .globl _start

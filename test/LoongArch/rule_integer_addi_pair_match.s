@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers .W and .D with positive and negative immediates.
-# CHECK-COUNT-3: [integer/addi-pair]
+# CHECK-COUNT-3: [loongarch:integer/addi-pair]
 # CHECK: 3 finding(s)
-# CHECK: 3 integer/addi-pair
+# CHECK: 3 loongarch:integer/addi-pair
 
 .text
 .globl _start

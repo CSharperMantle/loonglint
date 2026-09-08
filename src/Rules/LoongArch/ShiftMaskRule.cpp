@@ -21,7 +21,7 @@ namespace LoongArch = ::llvm::LoongArch;
 ShiftMaskRule::ShiftMaskRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef ShiftMaskRule::getID() const {
-    return "integer/shift-mask";
+    return "loongarch:integer/shift-mask";
 }
 
 StringRef ShiftMaskRule::getDescription() const {

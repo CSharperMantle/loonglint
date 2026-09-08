@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef ShiftDoubleRule::getID() const {
-    return "integer/shift-self-add";
+    return "loongarch:integer/shift-self-add";
 }
 
 StringRef ShiftDoubleRule::getDescription() const {

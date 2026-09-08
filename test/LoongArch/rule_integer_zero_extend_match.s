@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Byte, halfword, and word zero-extension.
-# CHECK-COUNT-3: [integer/zero-extend]
+# CHECK-COUNT-3: [loongarch:integer/zero-extend]
 # CHECK: 3 finding(s)
-# CHECK: 3 integer/zero-extend
+# CHECK: 3 loongarch:integer/zero-extend
 
 .text
 .globl _start

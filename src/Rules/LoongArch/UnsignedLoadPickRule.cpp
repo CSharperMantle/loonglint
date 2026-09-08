@@ -19,7 +19,7 @@ namespace LoongArch = ::llvm::LoongArch;
 UnsignedLoadPickRule::UnsignedLoadPickRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef UnsignedLoadPickRule::getID() const {
-    return "memory/unsigned-load-pick";
+    return "loongarch:memory/unsigned-load-pick";
 }
 
 StringRef UnsignedLoadPickRule::getDescription() const {

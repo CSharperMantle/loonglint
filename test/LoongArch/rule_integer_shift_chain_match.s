@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Includes an arithmetic-shift pair whose combined amount clamps to 63.
-# CHECK-COUNT-4: [integer/shift-chain]
+# CHECK-COUNT-4: [loongarch:integer/shift-chain]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/shift-chain
+# CHECK: 4 loongarch:integer/shift-chain
 
 .text
 .globl _start

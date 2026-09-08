@@ -1,8 +1,10 @@
-# LoongLint implemented rules
+# Implemented rules in LoongLint
 
 This documents peephole rules currently shipped in LoongLint, in `RuleManager` registration order.
 
-## `NopRule` (`integer/nop`)
+## LoongArch rules
+
+### `NopRule` (`loongarch:integer/nop`)
 
 ```asm
 or Rd, Rd, $zero
@@ -24,7 +26,7 @@ xori Rd, Rd, 0
 # delete
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64. Width-independent logical forms.
 
@@ -34,12 +36,12 @@ LA32/LA64. Width-independent logical forms.
 
 `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/loongarch/loongarch.md#L2659-L2659>
 * LoongArch Reference Manual Volume 1, §2.2.1.10.
 
-## `NopLA32Rule` (`integer/nop-la32`)
+### `NopLA32Rule` (`loongarch:integer/nop-la32`)
 
 ```asm
 add.w Rd, Rd, $zero
@@ -59,7 +61,7 @@ rotri.w Rd, Rd, 0
 # delete
 ```
 
-### Constraints
+#### Constraints
 
 LA32 only.
 
@@ -67,11 +69,11 @@ LA32 only.
 
 `x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x >> 0 = x`, `x rotate 0 = x` at 32-bit width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/loongarch/loongarch.md#L732-L732>
 
-## `NopLA64Rule` (`integer/nop-la64`)
+### `NopLA64Rule` (`loongarch:integer/nop-la64`)
 
 ```asm
 add.d Rd, Rd, $zero
@@ -91,7 +93,7 @@ rotri.d Rd, Rd, 0
 # delete
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only.
 
@@ -99,11 +101,11 @@ LA64 only.
 
 `x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x >> 0 = x`, `x rotate 0 = x` at 64-bit width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/loongarch/loongarch.md#L790-L790>
 
-## `BitExtractRule` (`integer/bit-extract`)
+### `BitExtractRule` (`loongarch:integer/bit-extract`)
 
 ```asm
 srli.d Rd, Rj, Lsb
@@ -126,7 +128,7 @@ bstrpick.[wd] Rd, Rj, Msb, Lsb
 # in this order because nothing clears the replicated sign bits.
 ```
 
-### Constraints
+#### Constraints
 
 `BSTRPICK.D` on LA64; `BSTRPICK.W` on LA32/LA64.
 
@@ -137,11 +139,11 @@ bstrpick.[wd] Rd, Rj, Msb, Lsb
 
 Shift-first extracts `Rj[Lsb+Len-1:Lsb]`; mask-first extracts `Rj[Len-1:Lsb]` because the AND has already cleared every bit above the field. Both forms extract the same low field that `BSTRPICK` extracts directly, with width-specific sign/zero extension.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchISelLowering.cpp#L6362-L6413>
 
-## `ZeroExtendRule` (`integer/zero-extend`)
+### `ZeroExtendRule` (`loongarch:integer/zero-extend`)
 
 ```asm
 slli.[wd] Rd, Rj, Shamt
@@ -152,7 +154,7 @@ bstrpick.[wd] Rd, Rj, Msb, 0
 # where Msb = width - Shamt - 1
 ```
 
-### Constraints
+#### Constraints
 
 `BSTRPICK.D` on LA64; `BSTRPICK.W` on LA32/LA64.
 
@@ -161,11 +163,11 @@ bstrpick.[wd] Rd, Rj, Msb, 0
 
 A logical left shift then logical right shift by the same amount clears the high `width - Shamt` bits, which `BSTRPICK` with `msb = width - Shamt - 1`, `lsb = 0` does directly as a zero-extension.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchISelLowering.cpp#L6380-L6413>
 
-## `BitReverseRule` (`integer/bit-reverse`)
+### `BitReverseRule` (`loongarch:integer/bit-reverse`)
 
 ```asm
 revb.2w Rd, Rj
@@ -177,7 +179,7 @@ bitrev.4b Rd, Rj
 revb.d + bitrev.d  ->  bitrev.8b   (either order)
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only.
 
@@ -186,11 +188,11 @@ LA64 only.
 
 A byte-within-word reversal composed with a whole-word bit reversal leaves bit reversal within each byte.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1919-L1925>
 
-## `ByteReverseRule` (`integer/byte-reverse`)
+### `ByteReverseRule` (`loongarch:integer/byte-reverse`)
 
 ```asm
 revb.4h Rd, Rj
@@ -201,7 +203,7 @@ revb.d Rd, Rj
 # either instruction order is accepted.
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only.
 
@@ -209,11 +211,11 @@ LA64 only.
 
 A byte-within-halfword reversal composed with a halfword-order reversal is a whole-doubleword byte reversal, which `REVB.D` performs directly.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1919-L1925>
 
-## `MulhSextRule` (`integer/mulh-sext`)
+### `MulhSextRule` (`loongarch:integer/mulh-sext`)
 
 ```asm
 mulh.w[u] Rd, Rj, Rk
@@ -229,7 +231,7 @@ slli.w Rd, Rd, 0
 mulh.w[u] Rd, Rj, Rk   # delete the extension
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only; on LA32 the same-destination extension is an identity handled by `NopLA32Rule`.
 
@@ -237,11 +239,11 @@ LA64 only; on LA32 the same-destination extension is an identity handled by `Nop
 
 `MULH.W` and `MULH.WU` already sign-extend their 32-bit high result to the GPR width on LA64, so the following same-destination extension is redundant.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/loongarch/loongarch.md#L986-L1001>
 
-## `ShiftChainRule` (`integer/shift-chain`)
+### `ShiftChainRule` (`loongarch:integer/shift-chain`)
 
 ```asm
 slli.d Rd, Rj, Shamt0
@@ -254,7 +256,7 @@ slli.d Rd, Rj, Shamt
 # substitute .w for .d and 31 for 63.
 ```
 
-### Constraints
+#### Constraints
 
 `.D` on LA64; `.W` on LA32/LA64.
 
@@ -264,11 +266,11 @@ slli.d Rd, Rj, Shamt
 
 Fixed-width immediate shifts compose by adding amounts; arithmetic right shifts saturate at the width maximum.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1250-L1264>
 
-## `ShiftDoubleRule` (`integer/shift-self-add`)
+### `ShiftDoubleRule` (`loongarch:integer/shift-self-add`)
 
 ```asm
 add.d Rd, Rj, Rj
@@ -286,7 +288,7 @@ slli.d Rd, Rj, ShamtPlusOne
 # word forms substitute .w for .d and 30 for 62 as the max Shamt.
 ```
 
-### Constraints
+#### Constraints
 
 `.D` on LA64; `.W` on LA32/LA64.
 
@@ -295,11 +297,11 @@ slli.d Rd, Rj, ShamtPlusOne
 
 Doubling a fixed-width shifted value equals shifting by one additional bit at that width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L652-L672>
 
-## `RotateCombineRule` (`integer/rotate-combine`)
+### `RotateCombineRule` (`loongarch:integer/rotate-combine`)
 
 ```asm
 rotri.d Rd, Rj, Shamt0
@@ -311,7 +313,7 @@ rotri.d Rd, Rj, Shamt
 # Shamt = (Shamt0 + Shamt1) modulo width
 ```
 
-### Constraints
+#### Constraints
 
 `.D` on LA64; `.W` on LA32/LA64.
 
@@ -320,11 +322,11 @@ rotri.d Rd, Rj, Shamt
 
 Immediate rotations compose modulo the operand width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1290-L1292>
 
-## `ShiftMaskRule` (`integer/shift-mask`)
+### `ShiftMaskRule` (`loongarch:integer/shift-mask`)
 
 ```asm
 andi Rd, CountRj, Mask
@@ -344,7 +346,7 @@ sll.[wd] Rd, ValueRj, Rd
 sll.[wd] Rd, ValueRj, CountRj
 ```
 
-### Constraints
+#### Constraints
 
 `.W` on LA32/LA64; `.D` on LA64.
 
@@ -355,11 +357,11 @@ sll.[wd] Rd, ValueRj, CountRj
 
 LoongArch variable shifts already consume only the low 5 (`.W`) or 6 (`.D`) shift-count bits, so any count masking that preserves those bits is redundant.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchISelDAGToDAG.cpp#L283-L340>
 
-## `AndNotRule` (`integer/and-not`)
+### `AndNotRule` (`loongarch:integer/and-not`)
 
 ```asm
 nor Rd, NotRk, $zero
@@ -371,7 +373,7 @@ andn Rd, AndRj, NotRk
 # the AND temp operand are accepted.
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64.
 
@@ -381,11 +383,11 @@ LA32/LA64.
 
 `ANDN` is precisely `rj & ~rk`.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1421-L1421>
 
-## `OrNotRule` (`integer/or-not`)
+### `OrNotRule` (`loongarch:integer/or-not`)
 
 ```asm
 nor Rd, NotRk, $zero
@@ -396,7 +398,7 @@ orn Rd, OrRj, NotRk
 # all four operand-order combinations are accepted.
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64.
 
@@ -406,11 +408,11 @@ LA32/LA64.
 
 `ORN` is precisely `rj | ~rk`.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1420-L1420>
 
-## `NotOrRule` (`integer/not-or`)
+### `NotOrRule` (`loongarch:integer/not-or`)
 
 ```asm
 or Rd, Rj, Rk
@@ -421,7 +423,7 @@ nor Rd, Rj, Rk
 # both OR operand orders and both NOR $zero operand orders are accepted.
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64.
 
@@ -430,11 +432,11 @@ LA32/LA64.
 
 `NOR` is the one-instruction form of `NOT(OR(...))`.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1419-L1419>
 
-## `BitCountRule` (`integer/bit-count`)
+### `BitCountRule` (`loongarch:integer/bit-count`)
 
 ```asm
 nor NotRd, Rj, $zero
@@ -446,7 +448,7 @@ clo.w Rd, Rj
 # the NOR $zero operand may also be nor NotRd, $zero, Rj.
 ```
 
-### Constraints
+#### Constraints
 
 `.W` on LA32/LA64; `.D` on LA64.
 
@@ -455,11 +457,11 @@ clo.w Rd, Rj
 
 Leading/trailing zero counts of `~x` equal leading/trailing one counts of `x` at the same width.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1451-L1458>
 
-## `BranchToNextRule` (`control/branch-to-next`)
+### `BranchToNextRule` (`loongarch:control/branch-to-next`)
 
 ```asm
 b 4
@@ -468,7 +470,7 @@ b 4
 # delete
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64.
 
@@ -478,11 +480,11 @@ LA32/LA64.
 
 A branch to PC + 4 changes neither architectural state nor control flow.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/include/llvm/MC/MCInstrAnalysis.h#L187>
 
-## `DegenerateBranchRule` (`control/degenerate-branch`)
+### `DegenerateBranchRule` (`loongarch:control/degenerate-branch`)
 
 ```asm
 # always-true forms:
@@ -498,7 +500,7 @@ bne Rj, Rj, Offs
 # delete
 ```
 
-### Constraints
+#### Constraints
 
 LA32/LA64.
 
@@ -507,11 +509,11 @@ LA32/LA64.
 
 Integer comparisons of a register with itself, or zero with zero, have constant truth values.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/include/llvm/MC/MCInstrAnalysis.h#L57-L82>
 
-## `ShiftAddAlslDRule` (`integer/shift-add-alsl-d`)
+### `ShiftAddAlslDRule` (`loongarch:integer/shift-add-alsl-d`)
 
 ```asm
 slli.d SlliRd, SlliRj, Shamt
@@ -527,7 +529,7 @@ add.d SlliRd, SlliRd, AddRk
 alsl.d SlliRd, SlliRj, AlslRk, Shamt
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only.
 
@@ -539,11 +541,11 @@ LA64 only.
 
 `ALSL.D` reads both original sources before writing. It is not equivalent when the second `ADD.D` source aliases the shifted temporary.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1480-L1490>
 
-## `AddiPairRule` (`integer/addi-pair`)
+### `AddiPairRule` (`loongarch:integer/addi-pair`)
 
 ```asm
 addi.w Rd, Rj, Imm0
@@ -554,7 +556,7 @@ addi.w Rd, Rj, Combined
 # on LA64, substitute addi.d for addi.w.
 ```
 
-### Constraints
+#### Constraints
 
 `.W` on LA32/LA64; `.D` on LA64.
 
@@ -564,11 +566,11 @@ addi.w Rd, Rj, Combined
 
 Fixed-width addition is associative modulo the operation width; no memory or control state is involved.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1318-L1330>
 
-## `AddressLoadRule` (`memory/address-load`)
+### `AddressLoadRule` (`loongarch:memory/address-load`)
 
 ```asm
 addi.d Rd, Rj, AddSi12
@@ -581,7 +583,7 @@ ld.{b,h,w,d,bu,hu,wu} Rd, Rj, CombinedOffset
 ldptr.[wd] Rd, Rj, CombinedOffset
 ```
 
-### Constraints
+#### Constraints
 
 `ADDI.D` address arithmetic with all listed loads on LA64; `ADDI.W` address arithmetic with `LD.{B,H,W,BU,HU}` on LA32.
 
@@ -597,11 +599,11 @@ For `LDPTR.{W/D}`, decoded `MCOperand` immediates are byte offsets even though t
 
 One base-register addition plus one immediate-addressed load folds into the load displacement when the effective address and destination aliasing are preserved. Distinct-destination forms remain deferred because they require liveness analysis.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.cpp#L917-L998>
 
-## `LoadExtendRule` (`memory/load-extend`)
+### `LoadExtendRule` (`loongarch:memory/load-extend`)
 
 ```asm
 ld.b Rd, Rj, Si12
@@ -614,7 +616,7 @@ ld.b Rd, Rj, Si12   # delete the extension
 # Rd, Rd, 0 (LA64 only).
 ```
 
-### Constraints
+#### Constraints
 
 `EXT.W.B`/`EXT.W.H` on LA32/LA64; the `LD.W` and `LDPTR.W` forms on LA64 only (on LA32 the `ADDI.W`/`SLLI.W`-by-0 identities are handled by `NopLA32Rule`).
 
@@ -622,11 +624,11 @@ ld.b Rd, Rj, Si12   # delete the extension
 
 The signed loads and `LDPTR.W` already perform the requested sign extension.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1949-L1953>
 
-## `IndexedLoadRule` (`memory/indexed-load`)
+### `IndexedLoadRule` (`loongarch:memory/indexed-load`)
 
 ```asm
 add.d Rd, Rj, Rk
@@ -635,7 +637,7 @@ ld.* Rd, Rd, 0
 ldx.* Rd, Rj, Rk
 ```
 
-### Constraints
+#### Constraints
 
 LA64 only.
 
@@ -644,11 +646,11 @@ LA64 only.
 
 One base-plus-index addition followed by a zero-offset load folds into the indexed load when the index sources are preserved.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1969-L1978>
 
-## `LoadZeroExtendRule` (`memory/load-zero-extend`)
+### `LoadZeroExtendRule` (`loongarch:memory/load-zero-extend`)
 
 ```asm
 ld.[bhw] Rd, Rj, Si12
@@ -659,7 +661,7 @@ ld.{bu,hu,wu} Rd, Rj, Si12   # LA64
 # on LA32, ld.[bh] + bstrpick.w Rd, Rd, {7,15}, 0 -> ld.{bu,hu}
 ```
 
-### Constraints
+#### Constraints
 
 `BSTRPICK.D` on LA64; `BSTRPICK.W` on LA32 (`BSTRPICK.W` sign-extends on LA64 and would not zero-extend there).
 
@@ -667,11 +669,11 @@ ld.{bu,hu,wu} Rd, Rj, Si12   # LA64
 
 Extracting the loaded low field with `BSTRPICK` is exactly what the unsigned loads `LD.BU`/`LD.HU`/`LD.WU` produce.
 
-### Evidence
+#### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/LoongArch/LoongArchInstrInfo.td#L1954-L1959>
 
-## `UnsignedLoadPickRule` (`memory/unsigned-load-pick`)
+### `UnsignedLoadPickRule` (`loongarch:memory/unsigned-load-pick`)
 
 ```asm
 ld.bu Rd, Rj, Si12
@@ -682,7 +684,7 @@ ld.bu Rd, Rj, Si12
 # On LA32 the pick is bstrpick.w Rd, Rd, {7,15}, 0 after ld.{bu,hu}.
 ```
 
-### Constraints
+#### Constraints
 
 `BSTRPICK.D` picks on LA64; `BSTRPICK.W` picks on LA32. On LA32 `BSTRPICK.W` zero-extends the field across the whole 32-bit GRLEN.
 

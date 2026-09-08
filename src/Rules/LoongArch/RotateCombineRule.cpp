@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef RotateCombineRule::getID() const {
-    return "integer/rotate-combine";
+    return "loongarch:integer/rotate-combine";
 }
 
 StringRef RotateCombineRule::getDescription() const {

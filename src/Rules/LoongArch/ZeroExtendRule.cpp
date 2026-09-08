@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef ZeroExtendRule::getID() const {
-    return "integer/zero-extend";
+    return "loongarch:integer/zero-extend";
 }
 
 StringRef ZeroExtendRule::getDescription() const {

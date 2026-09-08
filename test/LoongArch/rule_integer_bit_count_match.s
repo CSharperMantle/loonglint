@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers CLZ.W/CTZ.W/CLZ.D/CTZ.D and both NOR $zero operand orders.
-# CHECK-COUNT-4: [integer/bit-count]
+# CHECK-COUNT-4: [loongarch:integer/bit-count]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/bit-count
+# CHECK: 4 loongarch:integer/bit-count
 
 .text
 .globl _start

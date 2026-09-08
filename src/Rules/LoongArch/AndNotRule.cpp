@@ -17,7 +17,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef AndNotRule::getID() const {
-    return "integer/and-not";
+    return "loongarch:integer/and-not";
 }
 
 StringRef AndNotRule::getDescription() const {

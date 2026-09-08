@@ -22,7 +22,7 @@ namespace LoongArch = ::llvm::LoongArch;
 AddressLoadRule::AddressLoadRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef AddressLoadRule::getID() const {
-    return "memory/address-load";
+    return "loongarch:memory/address-load";
 }
 
 StringRef AddressLoadRule::getDescription() const {

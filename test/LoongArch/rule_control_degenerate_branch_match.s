@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Always-true forms collapse to `B`; always-false forms are deleted.
-# CHECK-COUNT-6: [control/degenerate-branch]
+# CHECK-COUNT-6: [loongarch:control/degenerate-branch]
 # CHECK: 6 finding(s)
-# CHECK: 6 control/degenerate-branch
+# CHECK: 6 loongarch:control/degenerate-branch
 
 .text
 .globl _start

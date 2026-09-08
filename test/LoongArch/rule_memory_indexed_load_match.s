@@ -6,9 +6,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Covers B/H/W/D/BU/HU/WU widths.
-# CHECK-COUNT-7: [memory/indexed-load]
+# CHECK-COUNT-7: [loongarch:memory/indexed-load]
 # CHECK: 7 finding(s)
-# CHECK: 7 memory/indexed-load
+# CHECK: 7 loongarch:memory/indexed-load
 
 .text
 .globl _start

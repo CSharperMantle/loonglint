@@ -5,9 +5,9 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-# CHECK-COUNT-3: [integer/rotate-combine]
+# CHECK-COUNT-3: [loongarch:integer/rotate-combine]
 # CHECK: 3 finding(s)
-# CHECK: 3 integer/rotate-combine
+# CHECK: 3 loongarch:integer/rotate-combine
 
 .text
 .globl _start

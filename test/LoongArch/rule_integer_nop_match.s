@@ -9,9 +9,9 @@
 # RUN: ld.lld --entry=_start %t.64.o -o %t.64.exe
 # RUN: not loonglint %t.64.exe | FileCheck %s
 
-# CHECK-COUNT-7: [integer/nop]
+# CHECK-COUNT-7: [loongarch:integer/nop]
 # CHECK: 7 finding(s)
-# CHECK: 7 integer/nop
+# CHECK: 7 loongarch:integer/nop
 
 .text
 .globl _start

@@ -10,9 +10,9 @@
 # RUN: not loonglint %t.64.exe | FileCheck %s
 
 ## Covers both OR operand orders and both NOR $zero operand orders.
-# CHECK-COUNT-4: [integer/not-or]
+# CHECK-COUNT-4: [loongarch:integer/not-or]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/not-or
+# CHECK: 4 loongarch:integer/not-or
 
 .text
 .globl _start

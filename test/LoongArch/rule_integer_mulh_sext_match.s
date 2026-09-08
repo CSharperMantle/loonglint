@@ -5,9 +5,9 @@
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe | FileCheck %s
 
-# CHECK-COUNT-4: [integer/mulh-sext]
+# CHECK-COUNT-4: [loongarch:integer/mulh-sext]
 # CHECK: 4 finding(s)
-# CHECK: 4 integer/mulh-sext
+# CHECK: 4 loongarch:integer/mulh-sext
 
 .text
 .globl _start

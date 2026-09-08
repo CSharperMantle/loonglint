@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef IndexedLoadRule::getID() const {
-    return "memory/indexed-load";
+    return "loongarch:memory/indexed-load";
 }
 
 StringRef IndexedLoadRule::getDescription() const {

@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef BitCountRule::getID() const {
-    return "integer/bit-count";
+    return "loongarch:integer/bit-count";
 }
 
 StringRef BitCountRule::getDescription() const {

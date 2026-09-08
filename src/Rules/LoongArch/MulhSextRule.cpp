@@ -16,7 +16,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef MulhSextRule::getID() const {
-    return "integer/mulh-sext";
+    return "loongarch:integer/mulh-sext";
 }
 
 StringRef MulhSextRule::getDescription() const {

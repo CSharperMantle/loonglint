@@ -19,7 +19,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef AddiPairRule::getID() const {
-    return "integer/addi-pair";
+    return "loongarch:integer/addi-pair";
 }
 
 StringRef AddiPairRule::getDescription() const {

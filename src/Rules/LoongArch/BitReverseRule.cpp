@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef BitReverseRule::getID() const {
-    return "integer/bit-reverse";
+    return "loongarch:integer/bit-reverse";
 }
 
 StringRef BitReverseRule::getDescription() const {

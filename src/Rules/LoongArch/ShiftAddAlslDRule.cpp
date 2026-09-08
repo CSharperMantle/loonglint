@@ -18,7 +18,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 StringRef ShiftAddAlslDRule::getID() const {
-    return "integer/shift-add-alsl-d";
+    return "loongarch:integer/shift-add-alsl-d";
 }
 
 StringRef ShiftAddAlslDRule::getDescription() const {

@@ -18,7 +18,7 @@ namespace LoongArch = ::llvm::LoongArch;
 LoadExtendRule::LoadExtendRule(const LoongArchSpec &LoongAS) : LoongAS(LoongAS) {}
 
 StringRef LoadExtendRule::getID() const {
-    return "memory/load-extend";
+    return "loongarch:memory/load-extend";
 }
 
 StringRef LoadExtendRule::getDescription() const {
