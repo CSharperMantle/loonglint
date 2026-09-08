@@ -5,7 +5,7 @@ if(NOT DEFINED LLVM_MAIN_SRC_DIR OR NOT COMMAND add_llvm_tool)
     "LoongLint must be built through LLVM_EXTERNAL_PROJECTS against an LLVM source tree")
 endif()
 
-set(LOONGLINT_ARCHS_all "LoongArch")
+set(LOONGLINT_ARCHS_all "LoongArch;RISCV")
 set(LOONGLINT_ARCHS_default)
 foreach (arch ${LOONGLINT_ARCHS_all})
   if (arch IN_LIST LLVM_TARGETS_TO_BUILD)
@@ -28,6 +28,10 @@ endforeach()
 set(LOONGLINT_HAS_LOONGARCH OFF)
 if("LoongArch" IN_LIST LOONGLINT_ARCHS)
   set(LOONGLINT_HAS_LOONGARCH ON)
+endif()
+set(LOONGLINT_HAS_RISCV OFF)
+if("RISCV" IN_LIST LOONGLINT_ARCHS)
+  set(LOONGLINT_HAS_RISCV ON)
 endif()
 
 set(LLVM_SUBPROJECT_TITLE "loonglint")
@@ -71,6 +75,10 @@ set(LOONGLINT_LOONGARCH_SOURCES
   src/Rules/LoongArch/UnsignedLoadPickRule.cpp
   src/Rules/LoongArch/ZeroExtendRule.cpp
 )
+set(LOONGLINT_RISCV_SOURCES
+  src/RISCV/RISCVSpec.cpp
+  src/Rules/RISCV/NopRule.cpp
+)
 
 set(LOONGLINT_ARCH_SOURCES)
 set(LLVM_LINK_COMPONENTS
@@ -85,6 +93,10 @@ set(LLVM_LINK_COMPONENTS
 if(LOONGLINT_HAS_LOONGARCH)
   list(APPEND LOONGLINT_ARCH_SOURCES ${LOONGLINT_LOONGARCH_SOURCES})
   list(APPEND LLVM_LINK_COMPONENTS LoongArchDesc LoongArchDisassembler LoongArchInfo)
+endif()
+if(LOONGLINT_HAS_RISCV)
+  list(APPEND LOONGLINT_ARCH_SOURCES ${LOONGLINT_RISCV_SOURCES})
+  list(APPEND LLVM_LINK_COMPONENTS RISCVDesc RISCVDisassembler RISCVInfo)
 endif()
 
 add_llvm_library(LoongLint
@@ -112,6 +124,13 @@ if(LOONGLINT_HAS_LOONGARCH)
     "${LLVM_BINARY_DIR}/lib/Target/LoongArch"
   )
   add_dependencies(LoongLint LoongArchCommonTableGen)
+endif()
+if(LOONGLINT_HAS_RISCV)
+  target_include_directories(LoongLint SYSTEM PRIVATE
+    "${LLVM_MAIN_SRC_DIR}/lib/Target/RISCV"
+    "${LLVM_BINARY_DIR}/lib/Target/RISCV"
+  )
+  add_dependencies(LoongLint RISCVCommonTableGen)
 endif()
 
 add_llvm_tool(loonglint

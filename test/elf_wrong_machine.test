@@ -4,7 +4,7 @@
 # RUN: yaml2obj %s -o %t
 # RUN: not loonglint %t 2>&1 | FileCheck %s
 
-# CHECK: loonglint: error: unsupported ELF machine in '{{.*}}': expected LoongArch
+# CHECK: loonglint: error: unsupported ELF machine in '{{.*}}'
 
 --- !ELF
 FileHeader:

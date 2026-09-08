@@ -691,3 +691,78 @@ ld.bu Rd, Rj, Si12
 * The `BSTRPICK` must extract exactly the loaded width (`msb` of 7/15/31 with `lsb = 0`) and overwrite the load destination.
 
 An unsigned load already produces the zero-extended field, so a full-width `BSTRPICK` of the same field rewrites the same value and can be deleted.
+
+## RISC-V rules
+
+### `NopRule` (`riscv:integer/nop`)
+
+```asm
+addi Rd, Rd, 0
+# or
+andi Rd, Rd, -1
+# or
+ori Rd, Rd, 0
+# or
+xori Rd, Rd, 0
+# or
+slli Rd, Rd, 0
+# or
+srli Rd, Rd, 0
+# or
+srai Rd, Rd, 0
+# or
+add Rd, Rd, x0
+# or
+add Rd, x0, Rd
+# or
+sub Rd, Rd, x0
+# or
+sll Rd, Rd, x0
+# or
+srl Rd, Rd, x0
+# or
+sra Rd, Rd, x0
+# or
+xor Rd, Rd, x0
+# or
+xor Rd, x0, Rd
+# or
+or Rd, Rd, x0
+# or
+or Rd, x0, Rd
+# or
+or Rd, Rd, Rd
+# or
+and Rd, Rd, Rd
+# ->
+# delete
+
+c.addi Rd, 0
+# or
+c.slli Rd, 0
+# or
+c.srli Rdprime, 0
+# or
+c.srai Rdprime, 0
+# or
+c.andi Rdprime, -1
+# or
+c.mv Rd, Rd
+# or
+c.and Rdprime, Rdprime
+# or
+c.or Rdprime, Rdprime
+# ->
+# delete
+```
+
+#### Constraints
+
+RV32/RV64 base ISA plus Zca compressed forms; width-independent.
+
+* Every form writes the register's own value back to itself (`x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width; the compressed forms expand to `addi rd, rd, 0`, `slli/srli/srai rd, rd, 0`, `andi rd, rd, -1`, `add rd, x0, rd`, `and/or rd, rd, rd`).
+* The register-prime forms (`rdprime`) operate on the compressed x8--x15 window, which never includes `x0`.
+* Encodings with rd=x0 are never reported. The ISA manual reserves them as HINTs (RV32I/RV64I HINT tables and the Zca HINT table): the canonical 4-byte NOP (`addi x0, x0, 0`, encoding `0x00000013`), the canonical 2-byte c.nop (encoding `0x0001`), the semihosting markers (`slli x0, x0, 31`, `srai x0, x0, 7`), the NTL family (`add x0, x0, x2`--`x5`, `c.add x0, x2`--`x5`) and the pause fence live there, and their operand fields carry the hint payload. Reporting them could prompt deleting a deliberate hint.
+* The compressed copy-to-self HINTs (`c.addi rd, 0`, `c.slli rd, 0`, `c.srli/c.srai rdprime, 0`) are reported: the manual describes them as "rd overwritten with a copy of itself", no standard toolchain emits them as hints, and implementations must ignore HINTs, so deletion is architecturally inert.
+* W-suffix forms are never matched: on RV64 they sign-extend the word result, which is not an identity (`addiw rd, rd, 0` is the canonical `sext.w`, and `c.addiw rd, 0` prints as `sext.w`); on RV32 they do not exist.
+* `c.add rd, rd` is not an identity: it expands to `add rd, rd, rd` (doubling), and `rs2=x0` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.

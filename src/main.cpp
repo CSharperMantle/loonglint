@@ -53,8 +53,12 @@ cl::opt<InputFormat> InputFormat("input-format", cl::desc("Input format"),
                                             clEnumValN(InputFormat::Elf, "elf", "ELF object"),
                                             clEnumValN(InputFormat::Raw, "raw", "Raw binary")),
                                  cl::cat(LoongLintCategory));
-cl::opt<std::string> Arch("arch", cl::desc("Architecture for raw input"),
-                          cl::value_desc("loongarch32|loongarch64"), cl::cat(LoongLintCategory));
+cl::opt<std::string> Arch("arch",
+                          cl::desc("Architecture for raw input:\n"
+                                   "  loongarch32 - 32-bit LoongArch\n"
+                                   "  loongarch64 - 64-bit LoongArch\n"
+                                   "  rv{32,64}*  - RISC-V ISA string, e.g. rv64gc"),
+                          cl::value_desc("arch"), cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
 cl::list<std::string> Exclude(
@@ -255,7 +259,9 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
 static std::unique_ptr<ArchSpec> makeArchSpec(const ArchQuery &AQ) {
     std::unique_ptr<ArchSpec> AS;
-#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::queryArchSpec(AS, AQ);
+#define LOONGLINT_ARCH(ArchName)                                                                   \
+    if (!AS)                                                                                       \
+        loonglint::ArchName::queryArchSpec(AS, AQ);
 #include "loonglint/ArchConfig.def"
 #undef LOONGLINT_ARCH
     return AS;
@@ -295,18 +301,18 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
     if (auto E = Features.takeError())
         return E;
 
-    const ArchQuery AQ = {
-        ArchQuery::ELF{TheELF->getEMachine(), TheELF->is64Bit(), std::move(*Features)}};
-    std::unique_ptr<ArchSpec> AS = makeArchSpec(AQ);
-    if (!AS)
-        return createStringError("unsupported ELF machine in '%s': expected LoongArch",
-                                 opts::InputFile.c_str());
-
     if (!is_contained({ELF::ET_EXEC, ELF::ET_DYN}, TheELF->getEType()))
         return createStringError("unsupported ELF type in '%s': expected ET_EXEC or ET_DYN",
                                  opts::InputFile.c_str());
 
-    assert(TheELF->isLittleEndian() && "big-endian ELF for LoongArch is so peculiar!");
+    if (!TheELF->isLittleEndian())
+        return createStringError("big-endian ELF '%s' is not supported", opts::InputFile.c_str());
+
+    const ArchQuery AQ = {
+        ArchQuery::ELF{TheELF->getEMachine(), TheELF->is64Bit(), std::move(*Features)}};
+    std::unique_ptr<ArchSpec> AS = makeArchSpec(AQ);
+    if (!AS)
+        return createStringError("unsupported ELF machine in '%s'", opts::InputFile.c_str());
 
     Expected<DisassemblerTarget> DT = DisassemblerTarget::create(*AS);
     if (auto E = DT.takeError())
@@ -421,7 +427,7 @@ int main(int argc, char **argv) {
 
     cl::HideUnrelatedOptions({&opts::LoongLintCategory, &getColorCategory()});
     cl::SetVersionPrinter(printVersion);
-    if (!cl::ParseCommandLineOptions(argc, argv, "Lint LoongArch machine code\n", &errs()))
+    if (!cl::ParseCommandLineOptions(argc, argv, "Lint machine code from binaries\n", &errs()))
         return 2;
     if (!validateOptions())
         return 2;
