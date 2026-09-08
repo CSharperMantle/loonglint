@@ -1,6 +1,6 @@
 ---
 name: loonglint-rule-dev
-description: Implement, extend, or debug LoongLint peephole rules in this repository. Rule classes under include/loonglint/Rules and src/Rules, the LowLevelInstMatcherDSL, RuleManager registration, lit fixtures under test/, and RULES.md documentation. Use this skill whenever the task touches any of those, or when the user asks to add, extend or debug a rule or a pattern.
+description: Implement, extend, or debug LoongLint peephole rules in this repository. LoongArch rule classes under include/loonglint/Rules/LoongArch and src/Rules/LoongArch (namespace loonglint::LoongArch, spec-injected variant gating), the LowLevelInstMatcherDSL, registration in LoongArchSpec::createRules, lit fixtures under test/LoongArch, and RULES.md documentation. Use this skill whenever the task touches any of those, or when the user asks to add, extend or debug a rule or a pattern.
 license: GPL-3.0-or-later
 ---
 
@@ -18,14 +18,14 @@ LoongLint is a peephole linter for LoongArch64 (LA64) and LoongArch32S (LA32) EL
 Work top to bottom; do not skip Step 1.
 
 1. **Verify the pattern against the architecture manual.** Derive every semantic fact (operand widths, shift-amount encodings, sign/zero extension behavior, LA32 vs LA64 availability per the instruction existence table) from the "LoongArch Reference Manual - Volume 1" at <https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.pdf> -- never from memory. Reject the pattern if the manual shows it needs cross-instruction state the peephole cannot see.
-2. **Pick the name and ID.** Class `XRule` in PascalCase; ID is `"category/name"` with a lowercase slug. Categories currently in use:
-   - `integer/`
-   - `memory/`
-   - `control/`
-3. **Implement** `include/loonglint/Rules/XRule.hpp` and `src/Rules/XRule.cpp` following the conventions below. Copy the shape of the closest exemplar rule, not a generic template.
-4. **Register** the rule in `src/RuleManager.cpp`: add the include (alphabetical order) and a `registerRule(std::make_unique<XRule>())` call. Registration order is finding output order -- place the rule next to related rules. Rule IDs must be unique (asserted in debug builds).
-5. **List the source** in the `add_llvm_tool(loonglint ...)` list in `CMakeLists.txt` (alphabetical order).
-6. **Write fixtures** under `test/`: a match (positive) fixture and a mismatch (negative) fixture at minimum, plus an LA32 variant if the rule runs on LA32. See [references/fixtures-and-docs.md](references/fixtures-and-docs.md) for exact formats and the zero-findings discipline.
+2. **Pick the name and ID.** Class `XRule` in PascalCase, living in `namespace loonglint::LoongArch`; ID is `"loongarch:category/name"` with a lowercase slug. Categories currently in use:
+   - `loongarch:integer/`
+   - `loongarch:memory/`
+   - `loongarch:control/`
+3. **Implement** `include/loonglint/Rules/LoongArch/XRule.hpp` and `src/Rules/LoongArch/XRule.cpp` following the conventions below. Copy the shape of the closest exemplar rule, not a generic template.
+4. **Register** the rule in `LoongArchSpec::createRules()` in `src/LoongArch/LoongArchSpec.cpp`: add the include (alphabetical order) and a `Rules.emplace_back(std::make_unique<XRule>());` call — pass `*this` instead if the rule is variant-gated (takes `const LoongArchSpec &`). Registration order is finding output order -- place the rule next to related rules. Rule IDs must be unique (asserted in debug builds). Do not touch `RuleManager` — it pulls the list from the spec and knows no concrete rules.
+5. **List the source** in the `add_llvm_library(LoongLint ...)` list in `CMakeLists.txt` (alphabetical order).
+6. **Write fixtures** under `test/LoongArch/`: a match (positive) fixture and a mismatch (negative) fixture at minimum, plus an LA32 variant if the rule runs on LA32. See [references/fixtures-and-docs.md](references/fixtures-and-docs.md) for exact formats and the zero-findings discipline.
 7. **Document in RULES.md**: one section per rule, placed in registration order. See [references/fixtures-and-docs.md](references/fixtures-and-docs.md) for the section structure and the evidence policy.
 8. **Update the candidate list**, _if_ the user maintains one: ask the user where their proposal/backlog notes live and mark the item shipped there. Do not guess at file names.
 9. **Format, build, test**: run `clang-format -i` on every touched C++ file, then build and run the suite (commands below). clang-tidy runs during compilation -- _fix_ its findings rather than suppressing them.
@@ -37,29 +37,34 @@ Work top to bottom; do not skip Step 1.
 
 Read the one closest to your shape before writing:
 
-- Deletion (replacement = surviving instruction) -> `src/Rules/UnsignedLoadPickRule.cpp`
-- Fusion with re-encoded immediates and range checks -> `src/Rules/AddressLoadRule.cpp`
-- Two match orders in one rule -> `src/Rules/BitExtractRule.cpp`
-- Cross-window dataflow constraint via matcher reuse -> `src/Rules/ShiftMaskRule.cpp`
-- Homogeneous variant sweep (tuple table) -> `src/Rules/LoadZeroExtendRule.cpp`
+- Deletion (replacement = surviving instruction) -> `src/Rules/LoongArch/UnsignedLoadPickRule.cpp`
+- Fusion with re-encoded immediates and range checks -> `src/Rules/LoongArch/AddressLoadRule.cpp`
+- Two match orders in one rule -> `src/Rules/LoongArch/BitExtractRule.cpp`
+- Cross-window dataflow constraint via matcher reuse -> `src/Rules/LoongArch/ShiftMaskRule.cpp`
+- Homogeneous variant sweep (tuple table) -> `src/Rules/LoongArch/LoadZeroExtendRule.cpp`
+- Spec-injected variant gating -> `src/Rules/LoongArch/NopLA64Rule.cpp` (whole-rule) and `src/Rules/LoongArch/ShiftMaskRule.cpp` (per-arm)
 
 Class skeleton (every rule follows this; see any exemplar for the full file):
 
 ```cpp
 class XRule final : public Rule {
   public:
-    llvm::StringRef getID() const override;            // "category/name"
+    explicit XRule(const LoongArchSpec &LoongAS);      // only when the rule needs variant gating
+    llvm::StringRef getID() const override;            // "loongarch:category/name"
     llvm::StringRef getDescription() const override;   // imperative: "fold X into Y"
     unsigned getInstructionCount() const override;     // window size this rule matches
     bool shouldRun(const Context &Ctx) const override; // only when whole-rule gating needed
     std::optional<Match> match(llvm::ArrayRef<Instruction> Instructions,
                                const Context &Ctx) const override;
+
+  private:
+    const LoongArchSpec &LoongAS;                      // ditto
 };
 ```
 
 ### 2.2. Requirements
 
-- Architecture gating: if the entire rule is variant-specific, override `shouldRun` (see `NopLA64Rule`); if only some arms are, check `Ctx.Arch` inside `match()` (see `ShiftMaskRule`). On LA32, "LA32" means LA32S: LA32S-granted instructions (`BSTRPICK.W`, `ANDN`/`ORN`, `BEQZ`/`BNEZ`, byte/bit operations) are available without extra gating, and `.D`/64-only forms are not. Note that some instructions might have different implications on LA32 and LA64.
+- Architecture gating: variant knowledge comes from the injected spec, never from `Context` (which carries only `MCInstrAnalysis`). If the entire rule is variant-specific, take `const LoongArchSpec &LoongAS` in the constructor and override `shouldRun` with `return LoongAS.is64();` (see `NopLA64Rule`); if only some arms are, store the reference and check `LoongAS.is64()` inside `match()` (see `ShiftMaskRule`, `AddressLoadRule`). On LA32, "LA32" means LA32S: LA32S-granted instructions (`BSTRPICK.W`, `ANDN`/`ORN`, `BEQZ`/`BNEZ`, byte/bit operations) are available without extra gating, and `.D`/64-only forms are not. Note that some instructions might have different implications on LA32 and LA64.
   - For example, `ADDI.W Rd, Rd, 0` is an no-op on LA32 since the register is one-word wide. It is a sign-extension from word to double-word on LA64, however.
 - Return `std::nullopt` for no finding. A `Match` replaces the whole window in the suggestion; deletion rules return the surviving instruction (`Result.Replacement.emplace_back(F)`), fusion rules build new instructions with `MCInstBuilder`.
 - Style: `.clang-format` (LLVM-based, 4-space indent, column 100). PascalCase everywhere, `The` prefix for global singletons, no multiple definitions-with-initializers on one line. Mnemonics in our own comments and strings are UPPERCASE (`ADD.D`); never rewrite LLVM's disassembly output -- fixtures contain real, lowercase assembly exactly as llvm-mc accepts it.
@@ -78,7 +83,7 @@ class XRule final : public Rule {
 
 #### 2.3.2. Window mechanics
 
-`RuleManager::runWindow` hands each rule exactly `getInstructionCount()` consecutive `Instruction` records; `Instructions[i].Inst` is the `MCInst`. Assert the size at the top of `match()` (`assert(Instructions.size() == 2 && "...")`). Windows are adjacent and slide by one instruction, so a 2-instruction rule sees every consecutive pair once per scan position. Rules whose applicability depends only on the target variant should say so via `shouldRun` instead of testing `Ctx.Arch` in every `match()` call -- the manager then skips them entirely.
+`RuleManager::runWindow` hands each rule exactly `getInstructionCount()` consecutive `Instruction` records; `Instructions[i].Inst` is the `MCInst`. Assert the size at the top of `match()` (`assert(Instructions.size() == 2 && "...")`). Windows are adjacent and slide by one instruction, so a 2-instruction rule sees every consecutive pair once per scan position. Rules whose applicability depends only on the target variant should say so via `shouldRun` and the injected `LoongAS` instead of testing the variant in every `match()` call -- the manager then skips them entirely.
 
 ## 3. Soundness rules (peephole-wide liveness guarantee)
 
@@ -95,7 +100,7 @@ LoongLint is a peephole linter. If a Rule cannot prove, via the pattern itself, 
 - Matcher captures persist after a successful `matchInst` and act as equality constraints when the same matcher object is reused; failed matches roll back. Reuse bound matchers deliberately (dataflow constraints), and use fresh matchers for independent attempts.
 - Decoded immediates can surprise: `LDPTR` offsets arrive already scaled (`isShiftedInt<14,2>` on the combined value), and `ALSL`'s assembly immediate is the real shift amount 1..4 (encoded as one less), etc. Always confirm the configured LLVM source and the "LoongArch Reference Manual - Volume 1" when in doubt.
 - A mismatch-fixture "negative" for your rule can accidentally match a different rule and break the zero-findings assertion. Check each negative against every overlapping rule before committing to it.
-- Keep the four orderings consistent: `RuleManager.cpp` includes and the `CMakeLists.txt` source list are alphabetical; registration order drives finding order and RULES.md section order.
+- Keep the orderings consistent: `LoongArchSpec.cpp` includes and the `CMakeLists.txt` source list are alphabetical; `createRules()` order drives finding order and RULES.md section order.
 - Probe operand layouts with `llvm-mc` before writing fixtures -- assemble the exact sequence you intend to match.
 
 ## 5. Build and test

@@ -100,11 +100,11 @@ bool matches(...) {
 
 ## 4. Structural patterns, with exemplars
 
-1. **Switch-on-opcode dispatch** (`src/Rules/ShiftMaskRule.cpp`). Classify the second instruction's opcode family first, derive width-dependent constants (`CountMask`, `MinMsb`), then match the first instruction against alternatives. Use when a family of opcodes shares one shape.
-2. **Tuple-table sweep** (`src/Rules/LoadZeroExtendRule.cpp`, `src/Rules/AddiPairRule.cpp`, `src/Rules/UnsignedLoadPickRule.cpp`). Enumerate homogeneous variants as a braced initializer of tuples/pairs, loop, and `continue` on non-match. Put per-row arch flags in the table (`Needs64`) or split the loop by `Ctx.Arch` (see `UnsignedLoadPickRule`'s LA64/LA32 branches). Loop-local matchers keep attempts independent.
-3. **Multi-arm sequencing** (`src/Rules/BitExtractRule.cpp`). When one rule accepts several orders (mask-first, shift-first), try each arm in a `do { ... break; ... } while (0);` block that `return`s on success and `break`s to the next arm. Each arm starts with fresh matchers.
-4. **Try-helper lambda** (`src/Rules/AddressLoadRule.cpp`'s `TryLoad`). When many candidate opcodes share one match-and-build body, capture the `Rule::Match` under construction in a lambda and call it per candidate opcode; return the result on the first success.
-5. **Cross-window constraint** (`src/Rules/ShiftMaskRule.cpp`). The mask instruction's destination matcher is reused in slots 1 and 3 of the shift match (`matchInst(S, Op, CountRdReg, ShRjReg, CountRdReg)`), forcing "the masked value is the shift count" in one call, followed by an explicit aliasing rejection (`ShRj == CountRd`).
+1. **Switch-on-opcode dispatch** (`src/Rules/LoongArch/ShiftMaskRule.cpp`). Classify the second instruction's opcode family first, derive width-dependent constants (`CountMask`, `MinMsb`), then match the first instruction against alternatives. Use when a family of opcodes shares one shape.
+2. **Tuple-table sweep** (`src/Rules/LoongArch/LoadZeroExtendRule.cpp`, `src/Rules/LoongArch/AddiPairRule.cpp`, `src/Rules/LoongArch/UnsignedLoadPickRule.cpp`). Enumerate homogeneous variants as a braced initializer of tuples/pairs, loop, and `continue` on non-match. Put per-row arch flags in the table (`Needs64`) or split the loop by the injected spec (`LoongAS.is64()`; see `UnsignedLoadPickRule`'s LA64/LA32 branches). Loop-local matchers keep attempts independent.
+3. **Multi-arm sequencing** (`src/Rules/LoongArch/BitExtractRule.cpp`). When one rule accepts several orders (mask-first, shift-first), try each arm in a `do { ... break; ... } while (0);` block that `return`s on success and `break`s to the next arm. Each arm starts with fresh matchers.
+4. **Try-helper lambda** (`src/Rules/LoongArch/AddressLoadRule.cpp`'s `TryLoad`). When many candidate opcodes share one match-and-build body, capture the `Rule::Match` under construction in a lambda and call it per candidate opcode; return the result on the first success.
+5. **Cross-window constraint** (`src/Rules/LoongArch/ShiftMaskRule.cpp`). The mask instruction's destination matcher is reused in slots 1 and 3 of the shift match (`matchInst(S, Op, CountRdReg, ShRjReg, CountRdReg)`), forcing "the masked value is the shift count" in one call, followed by an explicit aliasing rejection (`ShRj == CountRd`).
 
 ## 5. Debugging a non-matching matcher
 

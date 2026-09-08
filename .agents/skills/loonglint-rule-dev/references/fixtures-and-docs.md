@@ -2,12 +2,12 @@
 
 ## 1. Test suite layout
 
-- `test/` holds lit fixtures. `test/CMakeLists.txt` runs `add_lit_testsuite(check-loonglint ...)` over the build directory — **lit discovers new fixture files automatically; adding a test never requires a CMake edit.**
+- LoongArch-dependent lit fixtures live in `test/LoongArch/` (LLVM `MC/<Arch>/` convention). `test/CMakeLists.txt` runs `add_lit_testsuite(check-loonglint ...)` over the build directory — **lit discovers new fixture files automatically (recursively); adding a test never requires a CMake edit.** Arch-independent driver fixtures (pure argparsing, invalid-input rejections) sit directly in `test/` and are shared by all architectures.
 - Fixture kinds, by filename:
    - `rule_<category>_<id>_match.s` — positive: the rule must fire N times.
    - `rule_<category>_<id>_mismatch.s` — negative: near-misses must produce zero findings.
    - Variants when needed: `_la32_match` / `_la32_mismatch` (LA32-legal inputs), `_boundary_mismatch` (off-by-one immediates, bounds). See `rule_integer_shift_add_alsl_d_*` for precedents.
-- Other fixtures (`cli_*`, `elf*`, `raw*`, `smoke.test`) cover the CLI and decoder plumbing; a rule change should not need them.
+- Other fixtures (`cli_*`, `elf*`, `raw*`) cover the CLI and decoder plumbing; a rule change should not need them.
 - Tools available to RUN lines are declared as `DEPENDS` in `test/CMakeLists.txt` (`llvm-mc`, `FileCheck`, `not`, `yaml2obj`, `llvm-objcopy`, `loonglint`); `ld.lld` comes from the surrounding LLVM build and must exist on PATH.
 
 ## 2. Match fixture format
@@ -21,9 +21,9 @@
 # RUN: not loonglint %t.exe | FileCheck %s
 
 ## Optional per-group comments for sub-families.
-# CHECK-COUNT-6: [memory/unsigned-load-pick]
+# CHECK-COUNT-6: [loongarch:memory/unsigned-load-pick]
 # CHECK: 6 finding(s)
-# CHECK: 6 memory/unsigned-load-pick
+# CHECK: 6 loongarch:memory/unsigned-load-pick
 
 .text
 .globl _start
@@ -54,20 +54,20 @@ _start:
 
 The assertion is **zero findings from every rule in the registry**, not just yours. This is where rule work most often goes wrong:
 
-- Every pair of adjacent instructions is a candidate window for every 2-instruction rule. A negative for your rule can be a positive for another. Real example: `ld.bu $t0, $a0, 0` followed by `bstrpick.d $t0, $t0, 7, 0` is a valid negative for `memory/load-zero-extend` (unsigned load) but matches `memory/unsigned-load-pick` exactly.
-- Before finalizing a negative, walk the registry in `RuleManager` and check the window against each rule that shares either opcode. Change a register, an immediate, or the opcode until nothing fires — and know *why* nothing fires.
+- Every pair of adjacent instructions is a candidate window for every 2-instruction rule. A negative for your rule can be a positive for another. Real example: `ld.bu $t0, $a0, 0` followed by `bstrpick.d $t0, $t0, 7, 0` is a valid negative for `loongarch:memory/load-zero-extend` (unsigned load) but matches `loongarch:memory/unsigned-load-pick` exactly.
+- Before finalizing a negative, walk the registry in `LoongArchSpec::createRules()` and check the window against each rule that shares either opcode. Change a register, an immediate, or the opcode until nothing fires — and know *why* nothing fires.
 - Prefer negatives that each isolate one constraint of your rule (wrong immediate, wrong destination, aliased source, off-by-one bound) rather than one catch-all blob.
 
 FileCheck notes: CHECK directives collapse runs of whitespace, so indentation never needs to match; do not use `{{.*}}` patterns — exact counts and exact ID lines only.
 
 ## 4. RULES.md discipline
 
-RULES.md is the user-facing catalog. One `## XRule` section per rule (`category/name` in the heading), sections ordered exactly like registration in `RuleManager.cpp` — insert new sections at the matching position.
+RULES.md is the user-facing catalog. One `## XRule` section per rule (`loongarch:category/name` in the heading), sections ordered exactly like registration in `LoongArchSpec::createRules()` — insert new sections at the matching position.
 
 Section structure:
 
 ````markdown
-## `XRule` (`category/name`)
+## `XRule` (`loongarch:category/name`)
 
 ```asm
 <pattern asm, lowercase mnemonics, matching what fixtures contain>
