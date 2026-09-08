@@ -255,7 +255,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
 static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
     std::unique_ptr<ArchSpec> AS;
-#define LOONGLINT_ARCH(ArchName) LOONGLINT_##ArchName##_SPEC_CASES(AS)
+#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::dispatchSpecCases(AS, Name);
 #include "loonglint/ArchConfig.def"
 #undef LOONGLINT_ARCH
     if (!AS)
@@ -265,7 +265,7 @@ static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(StringRef Name) {
 
 static Expected<std::unique_ptr<ArchSpec>> makeArchSpec(uint16_t ELFMachine, bool Is64) {
     std::unique_ptr<ArchSpec> AS;
-#define LOONGLINT_ARCH(ArchName) LOONGLINT_##ArchName##_ELF_SPEC_CASES(AS, ELFMachine, Is64)
+#define LOONGLINT_ARCH(ArchName) loonglint::ArchName::dispatchSpecCases(AS, ELFMachine, Is64);
 #include "loonglint/ArchConfig.def"
 #undef LOONGLINT_ARCH
     if (!AS)

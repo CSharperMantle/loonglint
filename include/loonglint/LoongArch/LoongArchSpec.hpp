@@ -34,19 +34,10 @@ class LoongArchSpec final : public ArchSpec {
     bool Is64;
 };
 
+void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, llvm::StringRef Name);
+void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, uint16_t ELFMachine, bool Is64);
+
 } // namespace LoongArch
-
-// Fragments the driver expands for this architecture while consuming
-// loonglint/ArchConfig.def.
-#define LOONGLINT_LoongArch_SPEC_CASES(AS)                                                         \
-    if (!(AS) && Name == "loongarch64")                                                            \
-        (AS) = std::make_unique<LoongArch::LoongArchSpec>(true);                                   \
-    if (!(AS) && Name == "loongarch32")                                                            \
-        (AS) = std::make_unique<LoongArch::LoongArchSpec>(false);
-
-#define LOONGLINT_LoongArch_ELF_SPEC_CASES(AS, Machine, Is64)                                      \
-    if (!(AS) && (Machine) == ELF::EM_LOONGARCH)                                                   \
-        (AS) = std::make_unique<LoongArch::LoongArchSpec>(Is64);
 
 } // namespace loonglint
 

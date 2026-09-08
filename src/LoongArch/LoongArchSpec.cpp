@@ -90,6 +90,18 @@ SmallVector<std::unique_ptr<Rule>, 0> LoongArchSpec::createRules() const {
     return Rules;
 }
 
+void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, StringRef Name) {
+    if (Name == "loongarch64")
+        AS = std::make_unique<LoongArchSpec>(true);
+    else if (Name == "loongarch32")
+        AS = std::make_unique<LoongArchSpec>(false);
+}
+
+void dispatchSpecCases(std::unique_ptr<ArchSpec> &AS, uint16_t ELFMachine, bool Is64) {
+    if (ELFMachine == ELF::EM_LOONGARCH)
+        AS = std::make_unique<LoongArchSpec>(Is64);
+}
+
 } // namespace LoongArch
 
 } // namespace loonglint
