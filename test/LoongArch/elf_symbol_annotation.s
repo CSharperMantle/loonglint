@@ -5,7 +5,7 @@
 # RUN: ld.lld -Ttext=0x20120 --entry=_start %t.o -o %t.exe
 # RUN: not loonglint %t.exe 2>&1 | FileCheck %s
 
-# CHECK: _start:0x20120: fold address ADDI.[DW] into integer load offset [loongarch:memory/address-load]
+# CHECK: _start+0x0: fold address ADDI.[DW] into integer load offset [loongarch:memory/address-load]
 # CHECK: 1 finding(s)
 # CHECK: 1 loongarch:memory/address-load
 

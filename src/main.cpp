@@ -207,11 +207,34 @@ static void printInstruction(DisassemblerTarget &DT, FindingLineKind Kind, uint6
     outs() << '\n';
 }
 
-static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Finding &TheFinding) {
+static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const FunctionSymbols *FS,
+                         const Finding &TheFinding) {
     const uint64_t Address = TheFinding.Instructions.front().Address;
-    WithColor(outs(), raw_ostream::WHITE)
-        << opts::InputFile << ':' << RegionName << ':' << format_hex(Address, 0) << ": "
-        << TheFinding.MatchedRule.getDescription() << ' ';
+
+    outs() << opts::InputFile << ':';
+
+    if (!FS) {
+        // Raw input keeps its region label verbatim.
+        WithColor(outs(), HighlightColor::String) << RegionName;
+        // The colon itself is not part of an address.
+        outs() << ':';
+        WithColor(outs(), HighlightColor::Address) << format_hex(Address, 0);
+    } else if (const auto *const Entry = FS->find(Address)) {
+        // Symbol-offset format.
+        const uint64_t Offset = Address - Entry->Address;
+        WithColor(outs(), HighlightColor::String) << Entry->Name;
+        // "+offset" as a whole is considered an address.
+        WithColor(outs(), HighlightColor::Address) << '+' << format_hex(Offset, 0);
+    } else {
+        // Section-address format.
+        WithColor(outs(), HighlightColor::String)
+            << '<' << (RegionName.empty() ? "unnamed" : RegionName) << '>';
+        // The colon itself is not part of an address.
+        outs() << ':';
+        WithColor(outs(), HighlightColor::Address) << format_hex(Address, 0);
+    }
+
+    outs() << ": " << TheFinding.MatchedRule.getDescription() << ' ';
     WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.getID() << ']';
     outs() << '\n';
 
@@ -249,13 +272,7 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
     StatsReport SR(Manager);
     Expected<uint64_t> FindingCount = Region->runRules(Manager, [&](const Finding &F) {
-        if (FS) {
-            if (const FunctionSymbols::Entry *TheEntry = FS->find(F.Instructions.front().Address))
-                printFinding(DT, TheEntry->Name, F);
-            else
-                printFinding(DT, (Twine("<") + (Name.empty() ? "unnamed" : Name) + ">").str(), F);
-        } else
-            printFinding(DT, Name, F);
+        printFinding(DT, Name, FS, F);
         SR.addRuleHit(F.MatchedRule);
     });
     if (auto E = FindingCount.takeError())

@@ -14,11 +14,9 @@ FORCED = {
 NOP_RULES = {"integer/nop", "integer/nop-la32", "integer/nop-la64"}
 TIERS = ["Ion", "Baseline", "Trampoline", "Interpreter", "Other"]
 
-# loonglint finding line: `file:section:0xaddr: description [rule]`
-# The section name is the sanitized PerfSpewer name and may itself contain
-# ':' (jitdump2elf.py keeps ':' in its allowed set), so anchor on the ':0x'
-# that precedes the address rather than splitting on every ':'.
-RE_FINDING = re.compile(r"^.+?:(.+?):0x[0-9a-f]+: .+ \[([^\]]+)\]")
+RE_FINDING_OFF = re.compile(r"^(.+?):(?P<label>.+)(?P<off>\+0x[0-9a-f]+): .+ \[(?P<rule>[^\]]+)\]$")
+RE_FINDING_ABS = re.compile(r"^(.+?):(?P<label>.+?):(?P<abs>0x[0-9a-f]+): .+ \[(?P<rule>[^\]]+)\]$")
+RE_FINDING_BARE = re.compile(r"^(.+?):(?P<label>.+): .+ \[(?P<rule>[^\]]+)\]$")
 
 # Removed-instruction line inside a finding block.
 RE_REMOVED = re.compile(r"^\t- 0x[0-9a-f]+\t(\S+)(?:\t(.*))?$")
@@ -89,9 +87,13 @@ def main(
     pending: tuple[str, str] | None = None  # (rule, tier) awaiting its removed line
     with open(findings, errors="replace") as f:
         for line in f:
-            m = RE_FINDING.match(line)
+            m = (
+                RE_FINDING_OFF.match(line)
+                or RE_FINDING_ABS.match(line)
+                or RE_FINDING_BARE.match(line)
+            )
             if m:
-                section, rule = m.group(1), m.group(2)
+                section, rule = m.group("label"), m.group("rule")
                 tier = next((t for t, ps in _TIER_PREFIXES if section.startswith(ps)), "Other")
                 type_tier[rule][tier] += 1
                 pending = (rule, tier)
