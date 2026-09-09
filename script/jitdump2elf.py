@@ -10,14 +10,16 @@ from typing import Annotated, NamedTuple, final
 
 import typer
 from construct import Bytes, Int8ul, Int16ul, Int32ul, Int64ul, Struct
-from elftools.elf.constants import SH_FLAGS
+from elftools.elf.constants import E_FLAGS, SH_FLAGS
 from elftools.elf.enums import (
+    ENUM_ATTR_TAG_RISCV,
     ENUM_E_MACHINE,
     ENUM_E_TYPE,
     ENUM_E_VERSION,
     ENUM_EI_CLASS,
     ENUM_EI_DATA,
     ENUM_SH_TYPE_BASE,
+    ENUM_SH_TYPE_RISCV,
 )
 
 EI_MAG = b"\x7fELF"
@@ -143,6 +145,93 @@ def _align4(n: int) -> int:
 
 
 @final
+class ArchConfig(NamedTuple):
+    """The ELF identity of the output: e_machine, e_flags, and an optional
+    RISC-V ISA string embedded as a synthesized .riscv.attributes section
+    (None for LoongArch, whose extension channel is e_flags alone).
+    """
+
+    machine: int
+    flags: int
+    isa: str | None = None
+
+
+# Extension versions mirror the RISCVExtension<Major, Minor> records.
+# https://github.com/llvm/llvm-project/blob/fa01521e37e1b2db4edbf6a41687a00153505a37/llvm/lib/Target/RISCV/RISCVFeatures.td
+# i:L74 e:L78 m:L224 a:L251 f:L308 d:L316 c:L418 zicsr:L134 zifencei:L152 zba:L496 zbb:L504 zbs:L513 zmmul:L217
+RISCV_EXT_VERSIONS = {
+    "i": "2p1",
+    "e": "2p0",
+    "m": "2p0",
+    "a": "2p1",
+    "f": "2p2",
+    "d": "2p2",
+    "c": "2p0",
+    "zicsr": "2p0",
+    "zifencei": "2p0",
+    "zmmul": "1p0",
+    "zba": "1p0",
+    "zbb": "1p0",
+    "zbc": "1p0",
+    "zbs": "1p0",
+}
+
+
+def _riscv_token_is_versioned(token: str) -> bool:
+    p = token.rfind("p")
+    return p > 0 and token[:p][-1:].isdigit() and token[p + 1 :].isdigit()
+
+
+def _riscv_base_letters(token: str) -> str:
+    """Expand the base token: 'g' to 'imafd' (RISCVGImplications; no 'c'),
+    versions stripped, order-preserving dedupe.
+    """
+    letters: list[str] = []
+    for ch in token:
+        if ch.isdigit():
+            break
+        letters += "imafd" if ch == "g" else ch
+    return "".join(dict.fromkeys(letters))
+
+
+def normalize_riscv_isa(isa: str) -> str:
+    """Turn a friendly ISA string (rv64gc_zbb) into the versioned form the
+    strict normalized-arch parser requires (rv64i2p1_m2p0_..._zbb1p0).
+    'g' expands to the 'imafd' single-letter set; versioned tokens pass
+    through; unknown extensions default to version 1p0.
+    """
+    tokens: list[tuple[str, str]] = []
+    for i, token in enumerate(isa[4:].split("_")):
+        if i == 0 and not _riscv_token_is_versioned(token):
+            tokens += [(ch, RISCV_EXT_VERSIONS.get(ch, "1p0")) for ch in _riscv_base_letters(token)]
+        elif _riscv_token_is_versioned(token):
+            p = token.rfind("p")
+            tokens.append((token[: p + 1], token[p + 1 :]))
+        else:
+            tokens.append((token, RISCV_EXT_VERSIONS.get(token, "1p0")))
+    return "rv64" + "_".join(name + version for name, version in tokens)
+
+
+def riscv_config(isa: str) -> ArchConfig:
+    normalized = normalize_riscv_isa(isa)
+    letters = _riscv_base_letters(isa[4:].split("_", 1)[0])
+    flags = 0
+    if "c" in letters:
+        flags |= E_FLAGS.EF_RISCV_RVC
+    if "d" in letters:
+        flags |= E_FLAGS.EF_RISCV_FLOAT_ABI_DOUBLE
+    elif "f" in letters:
+        flags |= E_FLAGS.EF_RISCV_FLOAT_ABI_SINGLE
+    return ArchConfig(ENUM_E_MACHINE["EM_RISCV"], flags, normalized)
+
+
+LOONGARCH64 = ArchConfig(
+    ENUM_E_MACHINE["EM_LOONGARCH"],
+    E_FLAGS.EF_LOONGARCH_ABI_DOUBLE_FLOAT | E_FLAGS.EF_LOONGARCH_OBJABI_V1,
+)
+
+
+@final
 class _StrTab:
     """A byte buffer for a string table (shstrtab or strtab)."""
 
@@ -214,6 +303,40 @@ EH_SIZE = Elf64_Ehdr.sizeof()
 SHDR_SIZE = Elf64_Shdr.sizeof()
 
 
+def riscv_attributes(isa: str) -> bytes:
+    """Serialize a GNU-attributes section carrying Tag_RISCV_arch == |isa|.
+
+    Layout:
+    - 'A'
+    - u32 SectionLength counting everything after 'A' itself
+    - vendor "riscv",
+    - one Tag_File subsection whose Size covers the tag byte, the size field, and the attribute list
+    - the list is a ULEB128 attribute tag followed by the ISA string.
+    """
+    attr_list = bytes([ENUM_ATTR_TAG_RISCV["TAG_ARCH"]]) + isa.encode() + b"\0"
+    subsection = (
+        bytes([ENUM_ATTR_TAG_RISCV["TAG_FILE"]]) + struct.pack("<I", 5 + len(attr_list)) + attr_list
+    )
+    body = b"riscv\0" + subsection
+    return b"A" + struct.pack("<I", len(body) + 4) + body
+
+
+def resolve_arch(arch: str) -> ArchConfig:
+    if arch == "loongarch64":
+        return LOONGARCH64
+    if arch == "riscv64":
+        return riscv_config("rv64gc")
+    if arch.startswith("rv64") and all(
+        ch in "abcdefghijklmnopqrstuvwxyz0123456789_" for ch in arch[4:]
+    ):
+        return riscv_config(arch)
+    if arch in ("loongarch32", "riscv32") or arch.startswith("rv32"):
+        raise typer.BadParameter("32-bit ELF output is not supported")
+    raise typer.BadParameter(
+        "expected 'loongarch64', 'riscv64', or an RV64 ISA string (e.g. rv64gc_zbb)"
+    )
+
+
 def _shdr(
     sh_name: int = 0,
     sh_type: int = ENUM_SH_TYPE_BASE["SHT_NULL"],
@@ -259,9 +382,12 @@ def _ehdr_ident() -> bytes:
     )
 
 
-def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
-    """Write a LoongArch ET_EXEC ELF with one unnamed section per
-    (name, addr, code), plus symtab/strtab/shstrtab.
+def write_elf(
+    sections: list[tuple[str, int, bytes]], path: str, arch: ArchConfig = LOONGARCH64
+) -> None:
+    """Write a 64-bit little-endian ET_EXEC ELF of the given architecture
+    with one unnamed section per (name, addr, code), plus
+    symtab/strtab/shstrtab.
 
     Each section's sh_addr is the original JIT address, so finding
     addresses cross-reference back into the jitdump. Section names stay
@@ -280,6 +406,8 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
     symtab_name = shstrtab.add(".symtab")
     strtab_name = shstrtab.add(".strtab")
     shstrtab_name = shstrtab.add(".shstrtab")
+    attr = riscv_attributes(arch.isa) if arch.isa else b""
+    attr_name = shstrtab.add(".riscv.attributes") if attr else None
 
     strtab = _StrTab()
     syms = bytearray(
@@ -308,7 +436,9 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
     symtab_off = EH_SIZE + len(payload)
     strtab_off = symtab_off + len(syms)
     shstrtab_off = strtab_off + len(strtab.bytes())
-    shoff = _align4(shstrtab_off + len(shstrtab.bytes()))
+    attr_off = shstrtab_off + len(shstrtab.bytes())
+    shoff = _align4(attr_off + len(attr))
+    nsections += 1 if attr else 0
 
     shdrs = bytearray(_shdr())
     for (_name, addr, code), off in zip(sections, sec_offs, strict=True):
@@ -345,17 +475,26 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
         sh_size=len(shstrtab.bytes()),
         sh_addralign=1,
     )
+    if attr:
+        assert attr_name is not None
+        shdrs += _shdr(
+            sh_name=attr_name,
+            sh_type=ENUM_SH_TYPE_RISCV["SHT_RISCV_ATTRIBUTES"],
+            sh_offset=attr_off,
+            sh_size=len(attr),
+            sh_addralign=1,
+        )
 
     ehdr = Elf64_Ehdr.build(
         {
             "e_ident": _ehdr_ident(),
             "e_type": ENUM_E_TYPE["ET_EXEC"],
-            "e_machine": ENUM_E_MACHINE["EM_LOONGARCH"],
+            "e_machine": arch.machine,
             "e_version": ENUM_E_VERSION["EV_CURRENT"],
             "e_entry": 0,
             "e_phoff": 0,
             "e_shoff": shoff,
-            "e_flags": 0,
+            "e_flags": arch.flags,
             "e_ehsize": EH_SIZE,
             "e_phentsize": 0,
             "e_phnum": 0,
@@ -371,7 +510,8 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
         f.write(syms)
         f.write(strtab.bytes())
         f.write(shstrtab.bytes())
-        f.write(b"\x00" * (shoff - shstrtab_off - len(shstrtab.bytes())))
+        f.write(attr)
+        f.write(b"\x00" * (shoff - attr_off - len(attr)))
         f.write(shdrs)
 
 
@@ -418,6 +558,13 @@ def main(
             help="Path to output file",
         ),
     ],
+    arch: Annotated[
+        str,
+        typer.Option(
+            "--arch",
+            help="'loongarch64', 'riscv64', or an RV64 ISA string (e.g. rv64gc_zbb)",
+        ),
+    ] = "loongarch64",
     only: Annotated[
         list[str] | None,
         typer.Option(
@@ -473,7 +620,7 @@ def main(
             path = output
         else:
             path = output.with_name(f"{stem}.{i:03d}{suffix}")
-        write_elf(chunk, str(path))
+        write_elf(chunk, str(path), resolve_arch(arch))
         typer.echo(f"chunk {i}: {len(chunk)} objects -> {path}", err=True)
 
 
