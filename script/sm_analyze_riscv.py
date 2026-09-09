@@ -38,7 +38,7 @@ from typing import Annotated
 
 import typer
 
-from .jitdump2elf import CodeObject, parse_jitdump
+from .sm_jitdump2elf import CodeObject, parse_jitdump
 
 TIERS = ["Ion", "Baseline", "Trampoline", "Interpreter", "Wasm", "Other"]
 
