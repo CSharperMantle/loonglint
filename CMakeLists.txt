@@ -42,6 +42,7 @@ find_program(LOONGLINT_CLANG_TIDY NAMES clang-tidy REQUIRED)
 
 set(LOONGLINT_ENGINE_SOURCES
   src/DisassemblerTarget.cpp
+  src/FunctionSymbols.cpp
   src/RuleFilter.cpp
   src/RuleManager.cpp
   src/ScannedRegion.cpp

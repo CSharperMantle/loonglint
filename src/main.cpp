@@ -2,6 +2,7 @@
 
 #include "loonglint/ArchSpec.hpp"
 #include "loonglint/DisassemblerTarget.hpp"
+#include "loonglint/FunctionSymbols.hpp"
 #include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
@@ -237,7 +238,8 @@ static void printRegionWarnings(StringRef RegionName, const ScannedRegion &Regio
 }
 
 static Expected<StatsReport> lintRegion(const RuleManager &Manager, DisassemblerTarget &DT,
-                                        StringRef Name, ArrayRef<uint8_t> Bytes, uint64_t Address) {
+                                        StringRef Name, ArrayRef<uint8_t> Bytes, uint64_t Address,
+                                        const FunctionSymbols *FS = nullptr) {
     Expected<ScannedRegion> Region = ScannedRegion::create(DT, Bytes, Address);
     if (auto E = Region.takeError())
         return E;
@@ -247,7 +249,13 @@ static Expected<StatsReport> lintRegion(const RuleManager &Manager, Disassembler
 
     StatsReport SR(Manager);
     Expected<uint64_t> FindingCount = Region->runRules(Manager, [&](const Finding &F) {
-        printFinding(DT, Name, F);
+        if (FS) {
+            if (const FunctionSymbols::Entry *TheEntry = FS->find(F.Instructions.front().Address))
+                printFinding(DT, TheEntry->Name, F);
+            else
+                printFinding(DT, (Twine("<") + (Name.empty() ? "unnamed" : Name) + ">").str(), F);
+        } else
+            printFinding(DT, Name, F);
         SR.addRuleHit(F.MatchedRule);
     });
     if (auto E = FindingCount.takeError())
@@ -321,6 +329,14 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
     DT->setABIVersion(TheELF->getEIdentABIVersion());
 
     RuleManager Manager(*DT, Filter);
+
+    // [start, end)
+    SmallVector<std::pair<uint64_t, uint64_t>> TextRanges;
+    for (const auto &Section : Object->get()->sections())
+        if (Section.isText() && Section.getSize() != 0)
+            TextRanges.emplace_back(Section.getAddress(), Section.getAddress() + Section.getSize());
+    const FunctionSymbols FS = FunctionSymbols::create(*TheELF, TextRanges);
+
     StatsReport SR(Manager);
     bool HasCode = false;
     for (const auto &Section : Object->get()->sections()) {
@@ -337,9 +353,8 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
             continue;
 
         HasCode = true;
-        Expected<StatsReport> RegionSR =
-            lintRegion(Manager, *DT, Name->empty() ? "<unnamed>" : *Name,
-                       arrayRefFromStringRef(*Contents), Section.getAddress());
+        Expected<StatsReport> RegionSR = lintRegion(
+            Manager, *DT, *Name, arrayRefFromStringRef(*Contents), Section.getAddress(), &FS);
         if (auto E = RegionSR.takeError())
             return E;
 
