@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # pyright: reportUnusedCallResult=false
 
-import re
 import struct
 from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
@@ -28,8 +27,6 @@ JITDUMP_MAGIC = 0x4A695444
 
 # https://searchfox.org/firefox-main/rev/600bd2128b2ba435b9698ec8b61394aa27c7c93f/js/src/jit/Jitdump.h#19
 JIT_CODE_LOAD = 0
-
-SANITIZE_RE = re.compile(r"[^A-Za-z0-9_.@:<>/-]")
 
 
 @final
@@ -136,14 +133,6 @@ def tier_of(name: str) -> str:
         if name.startswith(prefixes):
             return tier
     return "Other"
-
-
-def section_name(name: str, seen: dict[str, int]) -> str:
-    """Sanitize a jitdump function name into a unique ELF section name."""
-    base = SANITIZE_RE.sub("_", name)[:90] or "anonymous"
-    n = seen.get(base, 0) + 1
-    seen[base] = n
-    return base if n == 1 else f"{base}.{n}"
 
 
 # === ELF64 emission ===
@@ -271,14 +260,15 @@ def _ehdr_ident() -> bytes:
 
 
 def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
-    """Write a LoongArch ET_EXEC ELF with one PROGBITS+EXECINSTR section per
+    """Write a LoongArch ET_EXEC ELF with one unnamed section per
     (name, addr, code), plus symtab/strtab/shstrtab.
 
-    Each section's sh_addr is the original JIT address, set directly in the
-    Elf64_Shdr struct, so finding addresses cross-reference back into the
-    jitdump.
+    Each section's sh_addr is the original JIT address, so finding
+    addresses cross-reference back into the jitdump. Section names stay
+    empty: the symbol table is the reporting channel, carrying the raw
+    jitdump record name as an STT_FUNC symbol at the record's original
+    address with the record's code size.
     """
-    # Section content, 4-aligned back to back after the ehdr.
     payload = bytearray()
     sec_offs: list[int] = []
     for _name, _addr, code in sections:
@@ -286,16 +276,11 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
         payload += code
         payload += b"\x00" * (_align4(len(payload)) - len(payload))
 
-    # shstrtab holds every section's name. Each code section gets its own
-    # unique name (the sanitized jitdump function name), so loonglint reports
-    # the generating function directly in `file:section:addr`.
     shstrtab = _StrTab()
-    sec_name_offs = [shstrtab.add(name) for name, _addr, _code in sections]
     symtab_name = shstrtab.add(".symtab")
     strtab_name = shstrtab.add(".strtab")
     shstrtab_name = shstrtab.add(".shstrtab")
 
-    # Symbol table: index 0 null symbol, then one STT_FUNC per section.
     strtab = _StrTab()
     syms = bytearray(
         Elf64_Sym.build(
@@ -309,7 +294,7 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
                 "st_name": st_name,
                 "st_info": (STB_LOCAL << 4) | STT_FUNC,
                 "st_other": 0,
-                "st_shndx": 1 + i,  # section index (after the null section)
+                "st_shndx": 1 + i,
                 "st_value": addr,
                 "st_size": len(code),
             }
@@ -326,9 +311,9 @@ def write_elf(sections: list[tuple[str, int, bytes]], path: str) -> None:
     shoff = _align4(shstrtab_off + len(shstrtab.bytes()))
 
     shdrs = bytearray(_shdr())
-    for name_off, (_name, addr, code), off in zip(sec_name_offs, sections, sec_offs, strict=True):
+    for (_name, addr, code), off in zip(sections, sec_offs, strict=True):
         shdrs += _shdr(
-            sh_name=name_off,
+            sh_name=0,
             sh_type=ENUM_SH_TYPE_BASE["SHT_PROGBITS"],
             sh_flags=SH_FLAGS.SHF_ALLOC | SH_FLAGS.SHF_EXECINSTR,
             sh_addr=addr,
@@ -463,12 +448,10 @@ def main(
         typer.echo("no JIT_CODE_LOAD records found", err=True)
         raise typer.Exit(code=1)
 
-    seen: dict[str, int] = {}
     sections: list[tuple[str, int, bytes]] = []
     tiers: dict[str, int] = {}
     for o in _filter(objects, only or [], exclude or []):
-        sn = section_name(o.name, seen)
-        sections.append((sn, o.addr, o.code))
+        sections.append((o.name, o.addr, o.code))
         t = tier_of(o.name)
         tiers[t] = tiers.get(t, 0) + 1
 
