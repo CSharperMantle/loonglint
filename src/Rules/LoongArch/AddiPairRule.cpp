@@ -57,7 +57,7 @@ std::optional<Rule::Match> AddiPairRule::match(ArrayRef<Instruction> Instruction
             continue;
         const int64_t SecondSi12 = SecondSi12Imm.get();
 
-        if (FirstSi12 == 0 || SecondSi12 == 0) // an ADDI-by-0 is an identity, not a pair member
+        if (FirstSi12 == 0 || SecondSi12 == 0) // an ADDI-by-0 is a NOP only when rd == rj
             continue;
         const int64_t Combined = FirstSi12 + SecondSi12;
         if (!isInt<12>(Combined))
