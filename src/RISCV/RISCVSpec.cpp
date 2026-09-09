@@ -2,8 +2,32 @@
 
 #include "loonglint/RISCV/RISCVSpec.hpp"
 
+#include "loonglint/Rules/RISCV/AddiPairRule.hpp"
+#include "loonglint/Rules/RISCV/AddressLoadRule.hpp"
+#include "loonglint/Rules/RISCV/BranchToNextRule.hpp"
+#include "loonglint/Rules/RISCV/DegenerateBranchRule.hpp"
+#include "loonglint/Rules/RISCV/LoadExtendRule.hpp"
+#include "loonglint/Rules/RISCV/LogicImmediateRule.hpp"
+#include "loonglint/Rules/RISCV/NegRule.hpp"
 #include "loonglint/Rules/RISCV/NopRule.hpp"
+#include "loonglint/Rules/RISCV/PCBranchRule.hpp"
+#include "loonglint/Rules/RISCV/SextWRule.hpp"
+#include "loonglint/Rules/RISCV/ShiftChainRule.hpp"
+#include "loonglint/Rules/RISCV/ShiftMaskRule.hpp"
+#include "loonglint/Rules/RISCV/ZbaNopRule.hpp"
+#include "loonglint/Rules/RISCV/ZbaShAddRule.hpp"
+#include "loonglint/Rules/RISCV/ZbaZextWRule.hpp"
+#include "loonglint/Rules/RISCV/ZbbAndnRule.hpp"
+#include "loonglint/Rules/RISCV/ZbbNopRule.hpp"
+#include "loonglint/Rules/RISCV/ZbbRotateRule.hpp"
+#include "loonglint/Rules/RISCV/ZbbSextRule.hpp"
+#include "loonglint/Rules/RISCV/ZbbZextHRule.hpp"
+#include "loonglint/Rules/RISCV/ZbsBclrRule.hpp"
+#include "loonglint/Rules/RISCV/ZbsBextRule.hpp"
+#include "loonglint/Rules/RISCV/ZbsBsetRule.hpp"
+#include "loonglint/Rules/RISCV/ZbsNopRule.hpp"
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Support/Error.h"
 #include "llvm/TargetParser/RISCVISAInfo.h"
@@ -46,6 +70,16 @@ StringRef RISCVSpec::getName() const {
     return "riscv";
 }
 
+bool RISCVSpec::hasExtension(StringRef Ext) const {
+    SmallVector<StringRef, 32> Features;
+    StringRef(FeaturesString).split(Features, ',');
+    for (StringRef Feature : Features)
+        if (Feature.size() == Ext.size() + 1 && Feature.front() == '+' &&
+            Feature.drop_front() == Ext)
+            return true;
+    return false;
+}
+
 unsigned RISCVSpec::getCellSize() const {
     return 2;
 }
@@ -65,6 +99,29 @@ MCSubtarget RISCVSpec::getMCSubtarget() const {
 SmallVector<std::unique_ptr<Rule>, 0> RISCVSpec::createRules() const {
     SmallVector<std::unique_ptr<Rule>, 0> Rules;
     Rules.emplace_back(std::make_unique<RISCV::NopRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ZbaNopRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbbNopRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbsNopRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::SextWRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbaZextWRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbbSextRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbbZextHRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::AddiPairRule>());
+    Rules.emplace_back(std::make_unique<RISCV::LogicImmediateRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ShiftChainRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ShiftMaskRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::NegRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ZbaShAddRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbbAndnRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbbRotateRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbsBextRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbsBsetRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::ZbsBclrRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::BranchToNextRule>());
+    Rules.emplace_back(std::make_unique<RISCV::DegenerateBranchRule>());
+    Rules.emplace_back(std::make_unique<RISCV::PCBranchRule>());
+    Rules.emplace_back(std::make_unique<RISCV::AddressLoadRule>(*this));
+    Rules.emplace_back(std::make_unique<RISCV::LoadExtendRule>());
     return Rules;
 }
 

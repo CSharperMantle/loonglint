@@ -1,4 +1,4 @@
-## Reject non-identity logical forms and the reserved rd=x0 HINT encodings.
+## Reject non-NOP logical forms and the reserved rd=x0 HINT encodings.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=riscv32-unknown-elf -mattr=+c -filetype=obj %s -o %t.32.o

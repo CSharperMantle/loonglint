@@ -20,8 +20,9 @@ class Rule {
     class Context {
       public:
         const llvm::MCInstrAnalysis &MIA;
+        const llvm::MCInstrInfo &MII;
 
-        explicit Context(const DisassemblerTarget &DT) : MIA(*DT.MIA) {}
+        explicit Context(const DisassemblerTarget &DT) : MIA(*DT.MIA), MII(*DT.MII) {}
     };
 
     struct Match {

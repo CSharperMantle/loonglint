@@ -1,4 +1,4 @@
-## Reject non-identity .D forms on LA64.
+## Reject non-NOP .D forms on LA64.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o

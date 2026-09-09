@@ -34,8 +34,22 @@ class RISCVSpec final : public ArchSpec {
     bool isRV64() const {
         return XLen == 64;
     }
+    bool hasZba() const {
+        return hasExtension("zba");
+    }
+    bool hasZbb() const {
+        return hasExtension("zbb");
+    }
+    bool hasZbs() const {
+        return hasExtension("zbs");
+    }
+    bool hasZbkb() const {
+        return hasExtension("zbkb");
+    }
 
   private:
+    bool hasExtension(llvm::StringRef Ext) const;
+
     unsigned XLen;
     std::string FeaturesString;
 };

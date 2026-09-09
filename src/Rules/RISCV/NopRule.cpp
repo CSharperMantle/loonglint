@@ -58,7 +58,7 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
     case RISCV::ADD:
     case RISCV::XOR: {
         // add rd, rd, x0 | add rd, x0, rd; xor likewise.
-        // (add rd, rd, rd doubles and xor rd, rd, rd zeroes, so the identity
+        // (add rd, rd, rd doubles and xor rd, rd, rd zeroes, so the NOP
         // holds only when one operand register is x0.)
         Reg RdReg, Rs1Reg, Rs2Reg;
         if (!matchInst(I, Opcode, RdReg, Rs1Reg, Rs2Reg))
@@ -128,7 +128,7 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
     }
     case RISCV::C_MV: {
         // c.mv rd, rd. The decoder guarantees rs2 != x0, so rd == rs2 already
-        // implies rd != x0 (c.mv with rd=x0 is a HINT, not an identity).
+        // implies rd != x0 (c.mv with rd=x0 is a HINT, not a NOP).
         Reg RdReg, Rs2Reg;
         if (matchInst(I, Opcode, RdReg, Rs2Reg) && RdReg.get() == Rs2Reg.get())
             return Match{};

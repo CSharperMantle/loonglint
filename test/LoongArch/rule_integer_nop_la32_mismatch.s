@@ -1,4 +1,4 @@
-## Reject non-identity .W forms on LA32; .W-by-0 is not an identity on LA64.
+## Reject non-NOP .W forms on LA32; .W-by-0 is not a NOP on LA64.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.32.o

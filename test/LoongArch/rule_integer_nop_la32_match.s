@@ -1,4 +1,4 @@
-## Match LA32 word-width identity operations.
+## Match LA32 word-width NOP operations.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.o

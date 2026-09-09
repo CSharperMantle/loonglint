@@ -1,4 +1,4 @@
-## Match width-independent identity operations in RV32 and RV64 code.
+## Match width-independent NOP operations in RV32 and RV64 code.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=riscv32-unknown-elf -mattr=+c -filetype=obj %s -o %t.32.o

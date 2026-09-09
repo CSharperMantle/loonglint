@@ -77,7 +77,30 @@ set(LOONGLINT_LOONGARCH_SOURCES
 )
 set(LOONGLINT_RISCV_SOURCES
   src/RISCV/RISCVSpec.cpp
+  src/Rules/RISCV/AddiPairRule.cpp
+  src/Rules/RISCV/AddressLoadRule.cpp
+  src/Rules/RISCV/BranchToNextRule.cpp
+  src/Rules/RISCV/DegenerateBranchRule.cpp
+  src/Rules/RISCV/LoadExtendRule.cpp
+  src/Rules/RISCV/LogicImmediateRule.cpp
+  src/Rules/RISCV/NegRule.cpp
   src/Rules/RISCV/NopRule.cpp
+  src/Rules/RISCV/PCBranchRule.cpp
+  src/Rules/RISCV/SextWRule.cpp
+  src/Rules/RISCV/ShiftChainRule.cpp
+  src/Rules/RISCV/ShiftMaskRule.cpp
+  src/Rules/RISCV/ZbaNopRule.cpp
+  src/Rules/RISCV/ZbaShAddRule.cpp
+  src/Rules/RISCV/ZbaZextWRule.cpp
+  src/Rules/RISCV/ZbbAndnRule.cpp
+  src/Rules/RISCV/ZbbNopRule.cpp
+  src/Rules/RISCV/ZbbRotateRule.cpp
+  src/Rules/RISCV/ZbbSextRule.cpp
+  src/Rules/RISCV/ZbbZextHRule.cpp
+  src/Rules/RISCV/ZbsBclrRule.cpp
+  src/Rules/RISCV/ZbsBextRule.cpp
+  src/Rules/RISCV/ZbsBsetRule.cpp
+  src/Rules/RISCV/ZbsNopRule.cpp
 )
 
 set(LOONGLINT_ARCH_SOURCES)
