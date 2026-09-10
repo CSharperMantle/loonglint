@@ -10,7 +10,7 @@ from typing import Annotated, NamedTuple, final
 
 import typer
 from construct import Bytes, Int8ul, Int16ul, Int32ul, Int64ul, Struct
-from elftools.elf.constants import E_FLAGS, SH_FLAGS
+from elftools.elf.constants import E_FLAGS, SH_FLAGS, SHN_INDICES
 from elftools.elf.enums import (
     ENUM_ATTR_TAG_RISCV,
     ENUM_E_MACHINE,
@@ -584,7 +584,7 @@ def main(
         typer.Option(
             "--max-sections",
             min=1,
-            max=65534,
+            max=SHN_INDICES.SHN_LORESERVE - 16,  # Reserve enough space
             help="Split output into chunks of at most this many sections",
         ),
     ] = 65534,
