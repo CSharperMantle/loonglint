@@ -762,12 +762,12 @@ RV32/RV64 base ISA plus Zca compressed forms; width-independent.
 
 * Every form writes the register's own value back to itself (`x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width; the compressed forms expand to `addi rd, rd, 0`, `slli/srli/srai rd, rd, 0`, `andi rd, rd, -1`, `add rd, x0, rd`, `and/or rd, rd, rd`).
 * The register-prime forms (`rdprime`) operate on the compressed x8--x15 window, which never includes `x0`.
-* Encodings with rd=x0 are never reported. The ISA manual reserves them as HINTs (RV32I/RV64I HINT tables and the Zca HINT table): the canonical 4-byte NOP (`addi x0, x0, 0`, encoding `0x00000013`), the canonical 2-byte c.nop (encoding `0x0001`), the semihosting markers (`slli x0, x0, 31`, `srai x0, x0, 7`), the NTL family (`add x0, x0, x2`--`x5`, `c.add x0, x2`--`x5`) and the pause fence live there, and their operand fields carry the hint payload. Reporting them could prompt deleting a deliberate hint.
+* Encodings with rd=x0 are never reported. The ISA manual reserves them as HINTs (RV32I/RV64I HINT tables and the Zca HINT table): the canonical 4-byte `nop` (`addi x0, x0, 0`, encoding `0x00000013`), the canonical 2-byte `c.nop` (encoding `0x0001`), the semihosting markers (`slli x0, x0, 31`, `srai x0, x0, 7`), the NTL family (`add x0, x0, x2`--`x5`, `c.add x0, x2`--`x5`) and the pause fence live there, and their operand fields carry the hint payload. Reporting them could prompt deleting a deliberate hint.
 * The compressed copy-to-self HINTs (`c.addi rd, 0`, `c.slli rd, 0`, `c.srli/c.srai rdprime, 0`) are reported: the manual describes them as "rd overwritten with a copy of itself", no standard toolchain emits them as hints, and implementations must ignore HINTs, so deletion is architecturally inert.
-* W-suffix forms are never matched: on RV64 they sign-extend the word result, which is not a NOP (`addiw rd, rd, 0` is the canonical `sext.w`, and `c.addiw rd, 0` prints as `sext.w`); on RV32 they do not exist.
-* `c.add rd, rd` is not a NOP: it expands to `add rd, rd, rd` (doubling), and `rs2=x0` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.
+* W-suffix forms are never matched: on RV64 they sign-extend the word result, which is not a nop (`addiw rd, rd, 0` is the canonical `sext.w`, and `c.addiw rd, 0` prints as `sext.w`); on RV32 they do not exist.
+* `c.add rd, rd` is not a nop: it expands to `add rd, rd, rd` (doubling), and `rs2=x0` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.
 
-### `ZbaNopRule` (`riscv:integer/zba-nop`)
+### `NopZbaRule` (`riscv:integer/nop-zba`)
 
 ```asm
 sh1add/sh2add/sh3add Rd, X0, Rd
@@ -785,11 +785,25 @@ Zba; gated on `hasZba()`. rd != x0, the shifted/zero-extended operand is `X0`, a
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L754-L773>
 
-### `ZbbNopRule` (`riscv:integer/zbb-nop`)
+### `NopZbbRule` (`riscv:integer/nop-zbb`)
 
 ```asm
 min/minu/max/maxu Rd, Rd, Rd
-# or
+# ->
+# delete
+```
+
+#### Constraints
+
+Zbb; gated on `hasZbb()`. rd != x0, and the two compared operands are both the destination: comparing a value with itself writes the value back.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L499>
+
+### `NopZbkbRule` (`riscv:integer/nop-zbkb`)
+
+```asm
 rol/ror Rd, Rd, X0
 # or
 rori Rd, Rd, 0
@@ -801,14 +815,14 @@ andn Rd, Rd, X0
 
 #### Constraints
 
-Zbb; the rotate/andn arms also apply under Zbkb (`shouldRun` is `hasZbb() || hasZbkb()`, and the min/max arms additionally check `hasZbb()`). rd != x0, per the NopRule policy. min/max of a value with itself is the value, rotate by zero is a NOP, and `rd & ~0 = rd`.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. rd != x0. Rotating by zero is a nop, and `rd & ~0 = rd`. The `min`/`max` identity family is Zbb-only and lives in `NopZbbRule`.
 
 #### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L499>
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L608-L611>
 
-### `ZbsNopRule` (`riscv:integer/zbs-nop`)
+### `BitRepeatRule` (`riscv:integer/bit-repeat`)
 
 ```asm
 bclri Rd, Rs, N
@@ -836,14 +850,10 @@ Zbs; gated on `hasZbs()`. Same-destination chain (the first destination is the s
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L327-L331>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L854-L854>
-### `SextWRule` (`riscv:integer/sext-w`)
+
+### `SextWFormRule` (`riscv:integer/sext-w-form`)
 
 ```asm
-addw Rd, Rs1, Rs2
-addiw Rd, Rd, 0
-# ->
-# delete the addiw
-
 slli Rd, Rs, 32
 srai Rd, Rd, 32
 # ->
@@ -852,10 +862,7 @@ addiw Rd, Rs, 0
 
 #### Constraints
 
-RV64 base ISA. The explicit `sext.w` (`addiw Rd, Rd, 0`, also encoded as `c.addiw Rd, 0`) is redundant when the producer already sign-extends its word result: `addw`, `addiw`, `subw`, `sllw`, `slliw`, `srlw`, `srliw`, `sraw`, `sraiw`, `mulw`, `divw`, `divuw`, `remw`, `remuw`, `slt`/`slti`/`sltu`/`sltiu`, `lui`, `lb`/`lh`/`lw`/`lbu`/`lhu`, `fmv.x.w`, and the A-extension W-forms (LLVM's `IsSignExtendingOpW` TSFlag, which the rule reads directly; `c.addiw` is added explicitly because compressed instructions carry no flag). `lwu` is excluded: it zero-extends, so a following `sext.w` changes the value. `auipc` is excluded.
-
-* The producer must write the `addiw` destination, and rd=x0 stays excluded by the NopRule HINT policy.
-* The shift-pair arm needs the same destination and the `XLEN-32` amounts (`slli 32; srai 32` is the generalized 32-bit sign-extension idiom).
+RV64 base ISA; gated on `isRV64()`. The `XLEN-32` shifts keep only the low word and sign-extend it, which `addiw Rd, Rs, 0` (printed `sext.w`) does in one instruction. rd=x0 stays excluded by the NopRule HINT policy.
 
 #### Evidence
 
@@ -863,46 +870,39 @@ RV64 base ISA. The explicit `sext.w` (`addiw Rd, Rd, 0`, also encoded as `c.addi
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfo.td#L970-L994>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1954-L1970>
 
-### `ZbaZextWRule` (`riscv:integer/zba-zext-w`)
+### `SextWElimRule` (`riscv:integer/sext-w-elim`)
 
 ```asm
-slli Rd, Rs, 32
-srli Rd, Rd, 32
+addw/addiw/subw/sllw/slliw/srlw/srliw/sraw/sraiw Rd, ...
+# or
+mulw/divw/divuw/remw/remuw Rd, ...
+# or
+slt/slti/sltu/sltiu Rd, ...
+# or
+lui Rd, Imm
+# or
+lb/lh/lw/lbu/lhu Rd, Off(Rs1)
+# or
+fmv.x.w Rd, Fs
+# or
+amoadd.w and other A-extension W-forms Rd, ...
 # ->
-add.uw Rd, Rs, X0 (zext.w)
-
-add.uw Rd, Rd, X0
-# after a producer already known to fit in 32 bits
+addiw Rd, Rd, 0
 # ->
-# delete
-
-add.uw Tmp, Rs1, X0
-add Rd, Tmp, Rs2
-# or add Rd, Rs2, Tmp
-# ->
-add.uw Rd, Rs1, Rs2
-
-add.uw Tmp, Rs1, X0
-sh1add Rd, Tmp, Rs2
-# ->
-sh1add.uw Rd, Rs1, Rs2
-
-add.uw Tmp, Rs1, X0
-slli Rd, Tmp, N
-# ->
-slli.uw Rd, Rs1, N
+# delete the addiw
 ```
 
 #### Constraints
 
-Zba and RV64 (every `zext.w`/`.uw` form is RV64-only); gated on `hasZba() && isRV64()`. Same-destination chains (the consuming op's destination equals the `zext.w` temporary), the consuming op's other source (`Rs2`) must not alias that temporary, `zext.w` is the `add.uw rd, rs, x0` alias, N within the `slli.uw` immediate field (N >= 1; a zero shift is a NOP owned by `NopRule`), and rd=x0 excluded. The deletion arm's producer table stays conservative: `lwu`, `lbu`/`lhu`, `zext.h`, `add.uw` with `X0` as the addend (`zext32(Rs1) + Rs2` is 32-bit-bounded only then), `andi` with a non-negative immediate, and `srli` by at least 32. Operations: `X(rd) = X(rs2) + zext32(X(rs1))` for `add.uw` and `X(rd) = zext32(X(rs1)) << shamt` for `slli.uw`.
+RV64 base ISA; gated on `isRV64()`. The explicit `sext.w` (`addiw Rd, Rd, 0`, also encoded as `c.addiw Rd, 0`) is redundant when the producer already sign-extends its word result: the producer set is exactly LLVM's `IsSignExtendingOpW` TSFlag, which the rule reads directly, plus `c.addiw` (compressed instructions carry no flag). `lwu` is excluded: it zero-extends, so a following `sext.w` changes the value. `auipc` is excluded. The producer must write the `addiw` destination, and rd=x0 stays excluded by the NopRule HINT policy.
 
 #### Evidence
 
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L754-L760>
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1863-L1889>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVOptWInstrs.cpp#L11-L13>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfo.td#L970-L994>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1954-L1970>
 
-### `ZbbSextRule` (`riscv:integer/zbb-sext`)
+### `SextFormRule` (`riscv:integer/sext-form`)
 
 ```asm
 slli Rd, Rs, XLEN-16
@@ -914,32 +914,35 @@ slli Rd, Rs, XLEN-8
 srai Rd, Rd, XLEN-8
 # ->
 sext.b Rd, Rs
+```
 
+#### Constraints
+
+Zbb; gated on `hasZbb()`. Same destination, rd=x0 excluded. The shift amounts are `XLEN-16` (48 on RV64, 16 on RV32) and `XLEN-8` (56/24). The `slli`/`srai` pair is the generalized byte/halfword sign-extension idiom that `sext.b`/`sext.h` fuse.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L603-L604>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1971-L1994>
+
+### `SextElimRule` (`riscv:integer/sext-elim`)
+
+```asm
 lb Rd, Off(Rs1)
 sext.b Rd, Rd
-# ->
-# delete
-
+# or
 lh Rd, Off(Rs1)
 sext.h Rd, Rd
-# ->
-# delete
-
+# or
 lb Rd, Off(Rs1)
 sext.h Rd, Rd
-# ->
-# delete
-
+# or
 sext.b Rd, Rs
 sext.b Rd, Rd
-# ->
-# delete
-
+# or
 sext.h Rd, Rs
 sext.h Rd, Rd
-# ->
-# delete
-
+# or
 sext.b Rd, Rs
 sext.h Rd, Rd
 # ->
@@ -948,21 +951,35 @@ sext.h Rd, Rd
 
 #### Constraints
 
-Zbb; gated on `hasZbb()`. Same destination, rd=x0 excluded. The shift amounts are `XLEN-16` (48 on RV64, 16 on RV32) and `XLEN-8` (56/24). `LB` already sign-extends a byte, so a following `sext.b` or `sext.h` is a NOP; `LH` already sign-extends a halfword, so `sext.h` is a NOP. The extension arms are idempotent, and `sext.h` after `sext.b` is also redundant because a byte-extended value is already halfword-extended; `sext.b` after `sext.h` is not (it narrows the value).
+Zbb; gated on `hasZbb()`. Same destination, rd=x0 excluded. `LB` already sign-extends a byte, so a following `sext.b` or `sext.h` is a nop; `LH` already sign-extends a halfword, so `sext.h` is a nop. The extension arms are idempotent, and `sext.h` after `sext.b` is also redundant because a byte-extended value is already halfword-extended; `sext.b` after `sext.h` is not (it narrows the value).
 
 #### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L603-L604>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1971-L1994>
 
-### `ZbbZextHRule` (`riscv:integer/zbb-zext-h`)
+### `ZextHFormRule` (`riscv:integer/zext-h-form`)
 
 ```asm
 slli Rd, Rs, XLEN-16
 srli Rd, Rd, XLEN-16
 # ->
 zext.h Rd, Rs
+```
 
+#### Constraints
+
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded. The shift amount is `XLEN-16` (48 on RV64, 16 on RV32). The `slli`/`srli` pair keeps only the low halfword, which `zext.h` fuses.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L716-L718>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1891-L1914>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L318-L318>
+
+### `ZextHElimRule` (`riscv:integer/zext-h-elim`)
+
+```asm
 lbu Rd, Off(Rs1)
 zext.h Rd, Rd
 # or
@@ -983,7 +1000,7 @@ zext.h Rd, Rd
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded. The shift amounts are `XLEN-16` (48 on RV64, 16 on RV32). The deletion arm's producer must be statically known to fit in 16 bits: `lbu`, `lhu`, `zext.h` itself, `andi` with a non-negative immediate (result at most 2047), or `srli` by at least `XLEN-16`.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded. The deletion arm's producer must be statically known to fit in 16 bits: `lbu`, `lhu`, `zext.h` itself, `andi` with a non-negative immediate (result at most 2047), or `srli` by at least `XLEN-16`.
 
 #### Evidence
 
@@ -991,58 +1008,83 @@ Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded.
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1891-L1914>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L318-L318>
 
-### `AddiPairRule` (`riscv:integer/addi-pair`)
+### `ZextWFormRule` (`riscv:integer/zext-w-form`)
 
 ```asm
-addi Rd, Rs, Imm0
-addi Rd, Rd, Imm1
+slli Rd, Rs, 32
+srli Rd, Rd, 32
 # ->
-addi Rd, Rs, Imm0+Imm1
-# or addi Rd, Rs, 0 (mv) when the sum is 0 and Rd != Rs
-# or delete when the sum is 0 and Rd == Rs
-
-c.addi Rd, Imm0
-c.addi Rd, Imm1
-# or the mixed addi/c.addi forms
-# ->
-addi Rd, Rd, Imm0+Imm1
-# or delete when the sum is 0
+add.uw Rd, Rs, X0 (zext.w)
 ```
 
 #### Constraints
 
-Base ISA; the `c.addi` arms need Zca. Both immediates must be nonzero (a zero-immediate member is claimed by `NopRule` only when it rewrites its own source; zero-immediate members stay excluded), the second instruction must overwrite the first destination, and the combined immediate must fit the signed 12-bit immediate. A zero sum is a deletion only when the chain's source is `Rd`; otherwise the pair is a copy (`addi Rd, Rs, 0`, printed `mv`). Two `c.addi` are 4 bytes and a single `addi` is 4, so the encoding never grows.
+Zba and RV64; gated on `hasZba() && isRV64()`. Same destination, rd=x0 excluded. The `XLEN-32` shifts keep only the low word, which `zext.w` (`add.uw Rd, Rs, X0`) fuses.
 
 #### Evidence
 
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVFoldMemOffset.cpp#L9-L15>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L754-L760>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1863-L1889>
 
-### `LogicImmediateRule` (`riscv:integer/logic-immediate`)
+### `ZextWElimRule` (`riscv:integer/zext-w-elim`)
 
 ```asm
-ori Rd, Rs, Imm0
-ori Rd, Rd, Imm1
+lwu/lbu/lhu Rd, Off(Rs1)
+add.uw Rd, Rd, X0
+# or
+zext.h Rd, Rs
+add.uw Rd, Rd, X0
+# or
+add.uw Rd, Rs, X0
+add.uw Rd, Rd, X0
+# or
+andi Rd, Rs, Imm
+add.uw Rd, Rd, X0
+# or
+srli Rd, Rs, N
+add.uw Rd, Rd, X0
 # ->
-ori Rd, Rs, Imm0|Imm1
-
-xori Rd, Rs, Imm0
-xori Rd, Rd, Imm1
-# ->
-xori Rd, Rs, Imm0^Imm1
-
-andi Rd, Rs, Imm0
-andi Rd, Rd, Imm1
-# ->
-andi Rd, Rs, Imm0&Imm1
+# delete the add.uw
 ```
 
 #### Constraints
 
-Base ISA. Same destination, both immediates nonzero. The OR/XOR/AND of two sign-extended 12-bit values is always a sign-extended 12-bit value, so the combined immediate is encodable without a range check. When the combined result is a NOP (`xori` with equal immediates, `andi` with both -1), the pair is deleted when the source is `Rd` and becomes `mv` otherwise.
+Zba and RV64; gated on `hasZba() && isRV64()`. `zext.w` is the `add.uw rd, rs, x0` alias, so the second instruction is redundant when its destination already holds a value that fits in 32 bits: `lwu`, `lbu`/`lhu`, `zext.h`, `add.uw` with `X0` as the addend (`zext32(Rs1) + Rs2` is 32-bit-bounded only then), `andi` with a non-negative immediate, and `srli` by at least 32. rd=x0 excluded.
 
 #### Evidence
 
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVISelLowering.cpp#L18380-L18490>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L754-L760>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1863-L1889>
+
+### `ZextWFoldRule` (`riscv:integer/zext-w-fold`)
+
+```asm
+add.uw Tmp, Rs1, X0
+add Rd, Tmp, Rs2
+# or add Rd, Rs2, Tmp
+# ->
+add.uw Rd, Rs1, Rs2
+
+add.uw Tmp, Rs1, X0
+sh1add/sh2add/sh3add Rd, Tmp, Rs2
+# ->
+sh1add.uw/sh2add.uw/sh3add.uw Rd, Rs1, Rs2
+
+add.uw Tmp, Rs1, X0
+slli Rd, Tmp, N
+# ->
+slli.uw Rd, Rs1, N
+```
+
+#### Constraints
+
+Zba and RV64; gated on `hasZba() && isRV64()`. Same-destination chains (the consuming op's destination equals the `zext.w` temporary), the consuming op's other source (`Rs2`) must not alias that temporary, `zext.w` is the `add.uw rd, rs, x0` alias, N within the `slli.uw` immediate field (N >= 1; a zero shift is a nop owned by `NopRule`), and rd=x0 excluded. Operations: `X(rd) = X(rs2) + zext32(X(rs1))` for `add.uw` and `X(rd) = zext32(X(rs1)) << shamt` for `slli.uw`.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L754-L760>
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L821-L822>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1863-L1889>
 
 ### `ShiftChainRule` (`riscv:integer/shift-chain`)
 
@@ -1085,25 +1127,7 @@ Base ISA. Same destination, N >= 1, and the replacement mask must fit the signed
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1863-L1889>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1891-L1914>
 
-### `NegRule` (`riscv:integer/neg`)
-
-```asm
-xori Rd, Rs, -1
-addi Rd, Rd, 1
-# ->
-sub Rd, X0, Rs
-```
-
-#### Constraints
-
-Base ISA. Same destination; `xori Rd, Rs, -1` is `not` and the pair is two's-complement `~x + 1 = -x`, i.e. the `neg` idiom `sub Rd, X0, Rs`. rd=x0 stays excluded.
-
-#### Evidence
-
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfo.td#L1124-L1124>
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1617-L1620>
-
-### `ZbaShAddRule` (`riscv:integer/zba-sh-add`)
+### `ShiftAddRule` (`riscv:integer/shift-add`)
 
 ```asm
 slli Rd, Rs1, N
@@ -1122,38 +1146,7 @@ Zba (`sh1add`/`sh2add`/`sh3add` exist on RV32 and RV64); gated on `hasZba()`. Sa
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVISelLowering.cpp#L17324-L17362>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L32-L32>
 
-### `ZbbAndnRule` (`riscv:integer/zbb-andn`)
-
-```asm
-xori Tmp, Rs2, -1
-and Rd, Rs1, Tmp
-# or and Rd, Tmp, Rs1
-# ->
-andn Rd, Rs1, Rs2
-
-xori Tmp, Rs2, -1
-or Rd, Rs1, Tmp
-# or or Rd, Tmp, Rs1
-# ->
-orn Rd, Rs1, Rs2
-
-xori Tmp, Rs2, -1
-xor Rd, Rs1, Tmp
-# or xor Rd, Tmp, Rs1
-# ->
-xnor Rd, Rs1, Rs2
-```
-
-#### Constraints
-
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The logic instruction's destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary (the `xori` would clobber it), and `Rs2` must not be the temporary itself: the self-inverted form is the Zbs mask-materialization middle owned by `ZbsBclrRule`. `Rs2 == X0` stays allowed (`~x0` is architecturally all ones, so `andn`/`orn`/`xnor` with a zero source compute exactly the original pair), and rd=x0 is excluded. `and`/`or`/`xor` are commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
-
-#### Evidence
-
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L488>
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L268-L268>
-
-### `ZbbRotateRule` (`riscv:integer/zbb-rotate`)
+### `RotateCombineRule` (`riscv:integer/rotate-combine`)
 
 ```asm
 rori Rd, Rs, Shamt0
@@ -1173,7 +1166,64 @@ Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, both amounts no
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L495-L499>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L372-L372>
 
-### `ZbsBextRule` (`riscv:integer/zbs-bext`)
+### `AndNotRule` (`riscv:integer/and-not`)
+
+```asm
+xori Tmp, Rs2, -1
+and Rd, Rs1, Tmp
+# or and Rd, Tmp, Rs1
+# ->
+andn Rd, Rs1, Rs2
+```
+
+#### Constraints
+
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `and` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary (the `xori` would clobber it), and `Rs2` must not be the temporary itself: the self-inverted form is the Zbs mask-materialization middle owned by `BclrRule`. `Rs2 == X0` stays allowed (`~x0` is architecturally all ones, so `andn` with a zero source computes exactly the original pair), and rd=x0 is excluded. `and` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L488>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L268-L268>
+
+### `OrNotRule` (`riscv:integer/or-not`)
+
+```asm
+xori Tmp, Rs2, -1
+or Rd, Rs1, Tmp
+# or or Rd, Tmp, Rs1
+# ->
+orn Rd, Rs1, Rs2
+```
+
+#### Constraints
+
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `or` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == X0` stays allowed, and rd=x0 is excluded. `or` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L488>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L268-L268>
+
+### `NotXorRule` (`riscv:integer/not-xor`)
+
+```asm
+xori Tmp, Rs2, -1
+xor Rd, Rs1, Tmp
+# or xor Rd, Tmp, Rs1
+# ->
+xnor Rd, Rs1, Rs2
+```
+
+#### Constraints
+
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `xor` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == X0` stays allowed, and rd=x0 is excluded. `xor` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L481-L488>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L268-L268>
+
+### `BextRule` (`riscv:integer/bext`)
 
 ```asm
 srli Tmp, Rs, Imm
@@ -1189,7 +1239,7 @@ bext Rd, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `Imm` is within the shift immediate field (a zero shift is a NOP owned by `NopRule` only when it rewrites its own source; otherwise the copy is absorbed), and rd=x0 is excluded. `bext`/`bexti` extract exactly one bit: `(X(rs1) >> index) & 1`.
+Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `Imm` is within the shift immediate field (a zero shift is a nop owned by `NopRule` only when it rewrites its own source; otherwise the copy is absorbed), and rd=x0 is excluded. `bext`/`bexti` extract exactly one bit: `(X(rs1) >> index) & 1`.
 
 #### Evidence
 
@@ -1197,33 +1247,7 @@ Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `I
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L536-L537>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L915-L915>
 
-### `ZbsBsetRule` (`riscv:integer/zbs-bset`)
-
-```asm
-addi Tmp, X0, 1
-sll Tmp, Tmp, Rs2
-or Tmp, Rs1, Tmp
-# ->
-bset Tmp, Rs1, Rs2
-
-addi Tmp, X0, 1
-sll Tmp, Tmp, Rs2
-xor Tmp, Rs1, Tmp
-# ->
-binv Tmp, Rs1, Rs2
-```
-
-#### Constraints
-
-Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `x0`. `or`/`xor` are commutative, so either operand order matches. Operations: `bset = rs1 | (1 << rs2)` and `binv = rs1 ^ (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `or`/`xor` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
-
-#### Evidence
-
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L515-L518>
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L624-L624>
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L635-L635>
-
-### `ZbsBclrRule` (`riscv:integer/zbs-bclr`)
+### `BclrRule` (`riscv:integer/bclr`)
 
 ```asm
 addi Tmp, X0, 1
@@ -1237,12 +1261,155 @@ bclr Tmp, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. Same-destination chain, the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll`/`xori` clobber it), and Tmp must not be `x0`. Operation: `bclr = rs1 & ~(1 << rs2)`. The `xori -1` + `and` middle inside the pattern does not match the general `ZbbAndnRule`: the self-inverted temporary (`Rs2 == Tmp`) is left to this rule. `and` is commutative, so either operand order matches.
+Zbs; gated on `hasZbs()`. Same-destination chain, the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll`/`xori` clobber it), and Tmp must not be `x0`. Operation: `bclr = rs1 & ~(1 << rs2)`. The `xori -1` + `and` middle inside the pattern does not match the general `AndNotRule`: the self-inverted temporary (`Rs2 == Tmp`) is left to this rule. `and` is commutative, so either operand order matches.
 
 #### Evidence
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L511-L514>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L845-L845>
+
+### `BsetRule` (`riscv:integer/bset`)
+
+```asm
+addi Tmp, X0, 1
+sll Tmp, Tmp, Rs2
+or Tmp, Rs1, Tmp
+# ->
+bset Tmp, Rs1, Rs2
+```
+
+#### Constraints
+
+Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `x0`. `or` is commutative, so either operand order matches. Operation: `bset = rs1 | (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `or` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L515-L518>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L624-L624>
+
+### `BinvRule` (`riscv:integer/binv`)
+
+```asm
+addi Tmp, X0, 1
+sll Tmp, Tmp, Rs2
+xor Tmp, Rs1, Tmp
+# ->
+binv Tmp, Rs1, Rs2
+```
+
+#### Constraints
+
+Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `x0`. `xor` is commutative, so either operand order matches. Operation: `binv = rs1 ^ (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `xor` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfoZb.td#L515-L518>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/bitmanip.md#L635-L635>
+
+### `LogicImmediateRule` (`riscv:integer/logic-immediate`)
+
+```asm
+ori Rd, Rs, Imm0
+ori Rd, Rd, Imm1
+# ->
+ori Rd, Rs, Imm0|Imm1
+
+xori Rd, Rs, Imm0
+xori Rd, Rd, Imm1
+# ->
+xori Rd, Rs, Imm0^Imm1
+
+andi Rd, Rs, Imm0
+andi Rd, Rd, Imm1
+# ->
+andi Rd, Rs, Imm0&Imm1
+```
+
+#### Constraints
+
+Base ISA. Same destination, both immediates nonzero. The OR/XOR/AND of two sign-extended 12-bit values is always a sign-extended 12-bit value, so the combined immediate is encodable without a range check. When the combined result is a nop (`xori` with equal immediates, `andi` with both -1), the pair is deleted when the source is `Rd` and becomes `mv` otherwise.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVISelLowering.cpp#L18380-L18490>
+
+### `AddiPairRule` (`riscv:integer/addi-pair`)
+
+```asm
+addi Rd, Rs, Imm0
+addi Rd, Rd, Imm1
+# ->
+addi Rd, Rs, Imm0+Imm1
+# or addi Rd, Rs, 0 (mv) when the sum is 0 and Rd != Rs
+# or delete when the sum is 0 and Rd == Rs
+
+c.addi Rd, Imm0
+c.addi Rd, Imm1
+# or the mixed addi/c.addi forms
+# ->
+addi Rd, Rd, Imm0+Imm1
+# or delete when the sum is 0
+```
+
+#### Constraints
+
+Base ISA; the `c.addi` arms need Zca. Both immediates must be nonzero (a zero-immediate member is claimed by `NopRule` only when it rewrites its own source; zero-immediate members stay excluded), the second instruction must overwrite the first destination, and the combined immediate must fit the signed 12-bit immediate. A zero sum is a deletion only when the chain's source is `Rd`; otherwise the pair is a copy (`addi Rd, Rs, 0`, printed `mv`). Two `c.addi` are 4 bytes and a single `addi` is 4, so the encoding never grows.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVFoldMemOffset.cpp#L9-L15>
+
+### `NegRule` (`riscv:integer/neg`)
+
+```asm
+xori Rd, Rs, -1
+addi Rd, Rd, 1
+# ->
+sub Rd, X0, Rs
+```
+
+#### Constraints
+
+Base ISA. Same destination; `xori Rd, Rs, -1` is `not` and the pair is two's-complement `~x + 1 = -x`, i.e. the `neg` idiom `sub Rd, X0, Rs`. rd=x0 stays excluded.
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfo.td#L1124-L1124>
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1617-L1620>
+
+### `AddressLoadRule` (`riscv:memory/address-load`)
+
+```asm
+addi Rd, Rs1, Imm0
+lb/lh/lw/ld/lbu/lhu/lwu Rd, Imm1(Rd)
+# ->
+same load Rd, Imm0+Imm1(Rs1)
+```
+
+#### Constraints
+
+Base ISA; `ld`/`lwu` are RV64. The load destination must equal the address temporary, proving the temporary is overwritten, the combined offset must fit the signed 12-bit load offset, and rd=x0 stays excluded. `flw`/`fld` are excluded: they write an FP register, so the address temporary is never overwritten and the rewrite needs a dead-temporary proof. Distinct-destination forms stay deferred (liveness).
+
+#### Evidence
+
+* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVFoldMemOffset.cpp#L9-L15>
+
+### `LoadZextRule` (`riscv:memory/load-zext`)
+
+```asm
+lbu Rd, Off(Rs1)
+andi Rd, Rd, 255
+# ->
+# delete the andi
+```
+
+#### Constraints
+
+Base ISA. The `andi` destination must be the load destination, and rd=x0 stays excluded. `LBU` already zero-extends the byte, and `andi 255` is the `zext.b` idiom. The Zbb/Zba extension arms live in `ZextHElimRule` and `ZextWElimRule`.
+
+#### Evidence
+
+* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1921-L1931>
 
 ### `BranchToNextRule` (`riscv:control/branch-to-next`)
 
@@ -1312,38 +1479,3 @@ Base ISA. The call form is provable from the shared destination (`jal` writes th
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVExpandPseudoInsts.cpp#L758-L790>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L4071-L4083>
-
-### `AddressLoadRule` (`riscv:memory/address-load`)
-
-```asm
-addi Rd, Rs1, Imm0
-lb/lh/lw/ld/lbu/lhu/lwu Rd, Imm1(Rd)
-# ->
-same load Rd, Imm0+Imm1(Rs1)
-```
-
-#### Constraints
-
-Base ISA; `ld`/`lwu` are RV64. The load destination must equal the address temporary, proving the temporary is overwritten, the combined offset must fit the signed 12-bit load offset, and rd=x0 stays excluded. `flw`/`fld` are excluded: they write an FP register, so the address temporary is never overwritten and the rewrite needs a dead-temporary proof. Distinct-destination forms stay deferred (liveness).
-
-#### Evidence
-
-* <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVFoldMemOffset.cpp#L9-L15>
-
-### `LoadZeroExtendRule` (`riscv:memory/load-extend`)
-
-```asm
-lbu Rd, Off(Rs1)
-andi Rd, Rd, 255
-# ->
-# delete the andi
-```
-
-#### Constraints
-
-Base ISA. The `andi` destination must be the load destination, and rd=x0 stays excluded. `LBU` already zero-extends the byte. The sign-extending-load arms belong to `SextWRule`, `ZbbSextRule`, and `ZbbZextHRule`.
-
-#### Evidence
-
-* <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1921-L1931>
-

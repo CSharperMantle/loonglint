@@ -55,7 +55,7 @@ std::optional<Rule::Match> AddiPairRule::match(ArrayRef<Instruction> Instruction
 
     if (Rd == RISCV::X0)
         return std::nullopt;
-    if (First == 0) // an addi-by-0 is a NOP only when it rewrites its own source
+    if (First == 0) // an addi-by-0 is a nop only when it rewrites its own source
         return std::nullopt;
 
     // addi Rd, Rd, Imm1 | c.addi Rd, Imm1: the second overwrites the chain.
@@ -73,7 +73,7 @@ std::optional<Rule::Match> AddiPairRule::match(ArrayRef<Instruction> Instruction
         return std::nullopt;
 
     if (Combined == 0) {
-        // The pair leaves Rd = Rs: delete the NOP pair, or copy Rs.
+        // The pair leaves Rd = Rs: delete the nop pair, or copy Rs.
         if (Rd == Rs)
             return Match{};
     }

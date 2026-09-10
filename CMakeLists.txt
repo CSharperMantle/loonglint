@@ -80,28 +80,37 @@ set(LOONGLINT_RISCV_SOURCES
   src/RISCV/RISCVSpec.cpp
   src/Rules/RISCV/AddiPairRule.cpp
   src/Rules/RISCV/AddressLoadRule.cpp
+  src/Rules/RISCV/AndNotRule.cpp
+  src/Rules/RISCV/BclrRule.cpp
+  src/Rules/RISCV/BextRule.cpp
+  src/Rules/RISCV/BinvRule.cpp
+  src/Rules/RISCV/BitRepeatRule.cpp
   src/Rules/RISCV/BranchToNextRule.cpp
+  src/Rules/RISCV/BsetRule.cpp
   src/Rules/RISCV/DegenerateBranchRule.cpp
-  src/Rules/RISCV/LoadZeroExtendRule.cpp
+  src/Rules/RISCV/LoadZextRule.cpp
   src/Rules/RISCV/LogicImmediateRule.cpp
   src/Rules/RISCV/NegRule.cpp
   src/Rules/RISCV/NopRule.cpp
+  src/Rules/RISCV/NopZbaRule.cpp
+  src/Rules/RISCV/NopZbbRule.cpp
+  src/Rules/RISCV/NopZbkbRule.cpp
+  src/Rules/RISCV/NotXorRule.cpp
+  src/Rules/RISCV/OrNotRule.cpp
   src/Rules/RISCV/PCBranchRule.cpp
-  src/Rules/RISCV/SextWRule.cpp
+  src/Rules/RISCV/RotateCombineRule.cpp
+  src/Rules/RISCV/SextElimRule.cpp
+  src/Rules/RISCV/SextFormRule.cpp
+  src/Rules/RISCV/SextWElimRule.cpp
+  src/Rules/RISCV/SextWFormRule.cpp
+  src/Rules/RISCV/ShiftAddRule.cpp
   src/Rules/RISCV/ShiftChainRule.cpp
   src/Rules/RISCV/ShiftMaskRule.cpp
-  src/Rules/RISCV/ZbaNopRule.cpp
-  src/Rules/RISCV/ZbaShAddRule.cpp
-  src/Rules/RISCV/ZbaZextWRule.cpp
-  src/Rules/RISCV/ZbbAndnRule.cpp
-  src/Rules/RISCV/ZbbNopRule.cpp
-  src/Rules/RISCV/ZbbRotateRule.cpp
-  src/Rules/RISCV/ZbbSextRule.cpp
-  src/Rules/RISCV/ZbbZextHRule.cpp
-  src/Rules/RISCV/ZbsBclrRule.cpp
-  src/Rules/RISCV/ZbsBextRule.cpp
-  src/Rules/RISCV/ZbsBsetRule.cpp
-  src/Rules/RISCV/ZbsNopRule.cpp
+  src/Rules/RISCV/ZextHElimRule.cpp
+  src/Rules/RISCV/ZextHFormRule.cpp
+  src/Rules/RISCV/ZextWElimRule.cpp
+  src/Rules/RISCV/ZextWFoldRule.cpp
+  src/Rules/RISCV/ZextWFormRule.cpp
 )
 
 set(LOONGLINT_ARCH_SOURCES)
