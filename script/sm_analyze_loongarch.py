@@ -11,7 +11,7 @@ FORCED = {
     "control/branch-to-next": "branch relaxation",
 }
 # NOP-shaped rules whose findings may be ma_liPatchable low-12-bit slots.
-NOP_RULES = {"integer/nop", "integer/nop-la32", "integer/nop-la64"}
+NOP_RULES = {"loongarch:integer/nop", "loongarch:integer/nop-la32", "loongarch:integer/nop-la64"}
 TIERS = ["Ion", "Baseline", "Trampoline", "Interpreter", "Other"]
 
 RE_FINDING_OFF = re.compile(r"^(.+?):(?P<label>.+)(?P<off>\+0x[0-9a-f]+): .+ \[(?P<rule>[^\]]+)\]$")
