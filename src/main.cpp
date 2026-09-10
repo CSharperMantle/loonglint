@@ -72,6 +72,10 @@ cl::list<std::string> ExcludeFile(
     cl::desc("Read one exclusion regular expression per line from this file (repeatable); blank "
              "lines and '#' comments are ignored"),
     cl::value_desc("file"), cl::cat(LoongLintCategory));
+cl::opt<bool> NoFunctionLabels(
+    "no-function-labels",
+    cl::desc("Disable 'function+offset' locator in printout and fall back to 'section:address'"),
+    cl::cat(LoongLintCategory));
 
 } // namespace opts
 
@@ -211,6 +215,8 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
                          const Finding &TheFinding) {
     const uint64_t Address = TheFinding.Instructions.front().Address;
 
+    const auto *const Entry = (!opts::NoFunctionLabels && FS) ? FS->find(Address) : nullptr;
+
     outs() << opts::InputFile << ':';
 
     if (!FS) {
@@ -219,7 +225,7 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
         // The colon itself is not part of an address.
         outs() << ':';
         WithColor(outs(), HighlightColor::Address) << format_hex(Address, 0);
-    } else if (const auto *const Entry = FS->find(Address)) {
+    } else if (Entry) {
         // Symbol-offset format.
         const uint64_t Offset = Address - Entry->Address;
         WithColor(outs(), HighlightColor::String) << Entry->Name;
