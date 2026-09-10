@@ -82,7 +82,7 @@ set(LOONGLINT_RISCV_SOURCES
   src/Rules/RISCV/AddressLoadRule.cpp
   src/Rules/RISCV/BranchToNextRule.cpp
   src/Rules/RISCV/DegenerateBranchRule.cpp
-  src/Rules/RISCV/LoadExtendRule.cpp
+  src/Rules/RISCV/LoadZeroExtendRule.cpp
   src/Rules/RISCV/LogicImmediateRule.cpp
   src/Rules/RISCV/NegRule.cpp
   src/Rules/RISCV/NopRule.cpp

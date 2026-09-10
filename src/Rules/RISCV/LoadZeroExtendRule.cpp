@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "loonglint/Rules/RISCV/LoadExtendRule.hpp"
+#include "loonglint/Rules/RISCV/LoadZeroExtendRule.hpp"
 
 #include "loonglint/MCInstMatcher.hpp"
 
@@ -14,20 +14,20 @@ namespace loonglint::RISCV {
 
 namespace RISCV = ::llvm::RISCV;
 
-StringRef LoadExtendRule::getID() const {
+StringRef LoadZeroExtendRule::getID() const {
     return "riscv:memory/load-extend";
 }
 
-StringRef LoadExtendRule::getDescription() const {
-    return "delete redundant load zero extension";
+StringRef LoadZeroExtendRule::getDescription() const {
+    return "delete redundant zero extension after zero-extending load";
 }
 
-unsigned LoadExtendRule::getInstructionCount() const {
+unsigned LoadZeroExtendRule::getInstructionCount() const {
     return 2;
 }
 
-std::optional<Rule::Match> LoadExtendRule::match(ArrayRef<Instruction> Instructions,
-                                                 const Context &) const {
+std::optional<Rule::Match> LoadZeroExtendRule::match(ArrayRef<Instruction> Instructions,
+                                                     const Context &) const {
     using namespace LowLevelInstMatcherDSL;
 
     assert(Instructions.size() == 2 && "memory/load-extend requires two instructions");

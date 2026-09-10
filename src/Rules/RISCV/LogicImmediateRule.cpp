@@ -23,7 +23,7 @@ StringRef LogicImmediateRule::getID() const {
 }
 
 StringRef LogicImmediateRule::getDescription() const {
-    return "fuse adjacent logic-immediate pair";
+    return "fuse adjacent immediate-logic instruction pair";
 }
 
 unsigned LogicImmediateRule::getInstructionCount() const {

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef LOONGLINT_RULES_RISCV_LOADEXTENDRULE_HPP
-#define LOONGLINT_RULES_RISCV_LOADEXTENDRULE_HPP
+#ifndef LOONGLINT_RULES_RISCV_LOADZEROEXTENDRULE_HPP
+#define LOONGLINT_RULES_RISCV_LOADZEROEXTENDRULE_HPP
 
 #include "loonglint/Rule.hpp"
 
 namespace loonglint::RISCV {
 
-class LoadExtendRule final : public Rule {
+class LoadZeroExtendRule final : public Rule {
   public:
     llvm::StringRef getID() const override;
     llvm::StringRef getDescription() const override;

@@ -23,7 +23,7 @@ StringRef ZbsBsetRule::getID() const {
 }
 
 StringRef ZbsBsetRule::getDescription() const {
-    return "fuse bit-mask materialization + or/xor into bset/binv";
+    return "fuse bit-mask materialization with 'or/xor' into Zbs 'bset/binv'";
 }
 
 unsigned ZbsBsetRule::getInstructionCount() const {

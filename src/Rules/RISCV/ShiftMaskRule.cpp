@@ -25,7 +25,7 @@ StringRef ShiftMaskRule::getID() const {
 }
 
 StringRef ShiftMaskRule::getDescription() const {
-    return "fuse shift pair into andi mask";
+    return "fuse adjacent shift pair into 'andi'";
 }
 
 unsigned ShiftMaskRule::getInstructionCount() const {

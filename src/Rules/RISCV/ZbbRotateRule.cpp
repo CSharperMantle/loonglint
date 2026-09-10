@@ -24,7 +24,7 @@ StringRef ZbbRotateRule::getID() const {
 }
 
 StringRef ZbbRotateRule::getDescription() const {
-    return "fuse adjacent rotations";
+    return "fuse adjacent Zbb rotation pair";
 }
 
 unsigned ZbbRotateRule::getInstructionCount() const {

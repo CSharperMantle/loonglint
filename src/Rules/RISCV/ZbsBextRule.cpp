@@ -24,7 +24,7 @@ StringRef ZbsBextRule::getID() const {
 }
 
 StringRef ZbsBextRule::getDescription() const {
-    return "fuse shift + andi 1 into bext";
+    return "fuse 'srl/srli; andi 1' into Zbs 'bext/bexti'";
 }
 
 unsigned ZbsBextRule::getInstructionCount() const {

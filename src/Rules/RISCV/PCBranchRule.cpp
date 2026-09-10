@@ -23,7 +23,7 @@ StringRef PCBranchRule::getID() const {
 }
 
 StringRef PCBranchRule::getDescription() const {
-    return "fuse auipc + jalr call into jal";
+    return "fuse 'auipc; jalr' call into 'jal'";
 }
 
 unsigned PCBranchRule::getInstructionCount() const {

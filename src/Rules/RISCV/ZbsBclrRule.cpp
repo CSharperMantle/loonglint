@@ -23,7 +23,7 @@ StringRef ZbsBclrRule::getID() const {
 }
 
 StringRef ZbsBclrRule::getDescription() const {
-    return "fuse inverted bit-mask materialization + and into bclr";
+    return "fuse inverted bit-mask materialization with 'and' into Zbs 'bclr'";
 }
 
 unsigned ZbsBclrRule::getInstructionCount() const {

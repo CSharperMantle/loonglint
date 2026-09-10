@@ -19,7 +19,7 @@ StringRef NopRule::getID() const {
 }
 
 StringRef NopRule::getDescription() const {
-    return "delete or replace non-canonical NOP instruction";
+    return "delete or replace non-canonical nop instruction";
 }
 
 unsigned NopRule::getInstructionCount() const {

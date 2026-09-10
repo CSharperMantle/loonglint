@@ -53,7 +53,7 @@ StringRef ZbaZextWRule::getID() const {
 }
 
 StringRef ZbaZextWRule::getDescription() const {
-    return "fuse word zero extension into zext.w";
+    return "fuse word-sized zero extension into Zba 'zext.w'";
 }
 
 unsigned ZbaZextWRule::getInstructionCount() const {

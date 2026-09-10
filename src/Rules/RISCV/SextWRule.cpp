@@ -24,7 +24,7 @@ StringRef SextWRule::getID() const {
 }
 
 StringRef SextWRule::getDescription() const {
-    return "delete redundant sext.w";
+    return "delete redundant 'sext.w'";
 }
 
 unsigned SextWRule::getInstructionCount() const {

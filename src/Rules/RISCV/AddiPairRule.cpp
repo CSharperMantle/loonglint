@@ -23,7 +23,7 @@ StringRef AddiPairRule::getID() const {
 }
 
 StringRef AddiPairRule::getDescription() const {
-    return "fuse adjacent addi/c.addi pair";
+    return "fuse adjacent 'addi/c.addi' pair";
 }
 
 unsigned AddiPairRule::getInstructionCount() const {

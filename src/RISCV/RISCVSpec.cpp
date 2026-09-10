@@ -6,7 +6,7 @@
 #include "loonglint/Rules/RISCV/AddressLoadRule.hpp"
 #include "loonglint/Rules/RISCV/BranchToNextRule.hpp"
 #include "loonglint/Rules/RISCV/DegenerateBranchRule.hpp"
-#include "loonglint/Rules/RISCV/LoadExtendRule.hpp"
+#include "loonglint/Rules/RISCV/LoadZeroExtendRule.hpp"
 #include "loonglint/Rules/RISCV/LogicImmediateRule.hpp"
 #include "loonglint/Rules/RISCV/NegRule.hpp"
 #include "loonglint/Rules/RISCV/NopRule.hpp"
@@ -121,7 +121,7 @@ SmallVector<std::unique_ptr<Rule>, 0> RISCVSpec::createRules() const {
     Rules.emplace_back(std::make_unique<RISCV::DegenerateBranchRule>());
     Rules.emplace_back(std::make_unique<RISCV::PCBranchRule>());
     Rules.emplace_back(std::make_unique<RISCV::AddressLoadRule>(*this));
-    Rules.emplace_back(std::make_unique<RISCV::LoadExtendRule>());
+    Rules.emplace_back(std::make_unique<RISCV::LoadZeroExtendRule>());
     return Rules;
 }
 

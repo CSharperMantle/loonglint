@@ -21,7 +21,7 @@ StringRef NegRule::getID() const {
 }
 
 StringRef NegRule::getDescription() const {
-    return "fuse not + addi 1 into sub";
+    return "fuse 'not; addi 1' into 'sub'";
 }
 
 unsigned NegRule::getInstructionCount() const {

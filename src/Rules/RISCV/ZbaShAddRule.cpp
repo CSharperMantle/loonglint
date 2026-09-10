@@ -24,7 +24,7 @@ StringRef ZbaShAddRule::getID() const {
 }
 
 StringRef ZbaShAddRule::getDescription() const {
-    return "fuse slli + add into shNadd";
+    return "fuse 'slli; add' into Zba 'shNadd'";
 }
 
 unsigned ZbaShAddRule::getInstructionCount() const {

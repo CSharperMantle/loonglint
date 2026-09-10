@@ -24,7 +24,7 @@ StringRef ZbbAndnRule::getID() const {
 }
 
 StringRef ZbbAndnRule::getDescription() const {
-    return "fuse xori -1 + logic into andn/orn/xnor";
+    return "fuse 'xori -1; and/or/xor' into Zbb 'andn/orn/xnor'";
 }
 
 unsigned ZbbAndnRule::getInstructionCount() const {

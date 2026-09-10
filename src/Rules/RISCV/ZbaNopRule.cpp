@@ -21,7 +21,7 @@ StringRef ZbaNopRule::getID() const {
 }
 
 StringRef ZbaNopRule::getDescription() const {
-    return "delete Zba NOP instruction";
+    return "delete or replace non-canonical Zba nop instruction";
 }
 
 unsigned ZbaNopRule::getInstructionCount() const {

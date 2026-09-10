@@ -1330,7 +1330,7 @@ Base ISA; `ld`/`lwu` are RV64. The load destination must equal the address tempo
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVFoldMemOffset.cpp#L9-L15>
 
-### `LoadExtendRule` (`riscv:memory/load-extend`)
+### `LoadZeroExtendRule` (`riscv:memory/load-extend`)
 
 ```asm
 lbu Rd, Off(Rs1)

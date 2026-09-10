@@ -25,7 +25,7 @@ StringRef AddressLoadRule::getID() const {
 }
 
 StringRef AddressLoadRule::getDescription() const {
-    return "fold address addi into integer load offset";
+    return "fold 'addi'-to-address into integer load offset";
 }
 
 unsigned AddressLoadRule::getInstructionCount() const {
