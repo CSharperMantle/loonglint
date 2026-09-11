@@ -587,7 +587,7 @@ def main(
             max=SHN_INDICES.SHN_LORESERVE - 16,  # Reserve enough space
             help="Split output into chunks of at most this many sections",
         ),
-    ] = 65534,
+    ] = SHN_INDICES.SHN_LORESERVE - 16,
 ) -> None:
     data = dump.read_bytes()
     objects = parse_jitdump(data)
