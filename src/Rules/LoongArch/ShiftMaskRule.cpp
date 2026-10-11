@@ -60,14 +60,14 @@ std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructio
     default:
         return std::nullopt;
     }
-    const int64_t CountMask = IsD ? 63 : 31;
+    const uint64_t CountMask = IsD ? UINT64_C(0x3F) : UINT64_C(0x1F);
 
     // The count producer is either an ANDI keeping every count bit, or, on
     // LA64, a BSTRPICK.D with lsb 0 keeping at least the count bits.
     Reg CountRdReg, CountRjReg;
     Imm MaskImm;
     if (matchInst(F, LoongArch::ANDI, CountRdReg, CountRjReg, MaskImm)) {
-        if ((MaskImm.get() & CountMask) != CountMask)
+        if ((static_cast<uint64_t>(MaskImm.get()) & CountMask) != CountMask)
             return std::nullopt;
     } else if (LoongAS.is64()) {
         Imm MsbImm;
