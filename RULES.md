@@ -692,6 +692,29 @@ ld.bu Rd, Rj, Si12
 
 An unsigned load already produces the zero-extended field, so a full-width `BSTRPICK` of the same field rewrites the same value and can be deleted.
 
+### `ZeroCompareBranchRule` (`loongarch:control/zero-compare-branch`)
+
+```asm
+beq Rd, $zero, Offs
+# or
+beq $zero, Rd, Offs
+# ->
+beqz Rd, Offs
+
+bne Rd, $zero, Offs
+# or
+bne $zero, Rd, Offs
+# ->
+bnez Rj, Offs
+```
+
+#### Constraints
+
+LA32/LA64.
+
+* Leave `beq $zero, $zero` and alike to `DegenerateBranchRule`.
+* Leave branching to PC + 4 to `BranchToNextRule`.
+
 ## RISC-V rules
 
 ### `NopRule` (`riscv:integer/nop`)

@@ -83,6 +83,7 @@ set(LOONGLINT_LOONGARCH_SOURCES
   src/Rules/LoongArch/ShiftDoubleRule.cpp
   src/Rules/LoongArch/ShiftMaskRule.cpp
   src/Rules/LoongArch/UnsignedLoadPickRule.cpp
+  src/Rules/LoongArch/ZeroCompareBranchRule.cpp
   src/Rules/LoongArch/ZeroExtendRule.cpp
 )
 set(LOONGLINT_RISCV_SOURCES
