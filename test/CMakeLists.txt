@@ -1,16 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-set(LOONGLINT_TEST_DEPENDS_COMMON
+set(LOONGLINT_TEST_DEPENDS
   FileCheck
   count
   not
-)
-
-set(LOONGLINT_TEST_DEPENDS
-  ${LOONGLINT_TEST_DEPENDS_COMMON}
   llvm-mc
   llvm-objcopy
   yaml2obj
+  loonglint
 )
 
 configure_lit_site_cfg(
