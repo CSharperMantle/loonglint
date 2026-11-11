@@ -1,0 +1,48 @@
+name: LLVM main compat check
+
+on:
+  schedule:
+    - cron: '21 07 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: llvm-main-compat-check
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out LoongLint
+        uses: actions/checkout@v7
+      - name: Check out llvm/llvm-project
+        uses: actions/checkout@v7
+        with:
+          repository: llvm/llvm-project
+          ref: main
+          path: llvm-project
+      - name: Install tools and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang ninja-build lld mold
+      - name: Record LLVM revision
+        run: |
+          rev="$(git -C llvm-project rev-parse --short HEAD)"
+          printf 'llvm-project@%s' "$rev" >>"$GITHUB_STEP_SUMMARY"
+      - name: Configure
+        run: |
+          cmake -S llvm-project/llvm -B llvm-project/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DLLVM_ENABLE_ASSERTIONS=ON \
+            -DLLVM_TARGETS_TO_BUILD='LoongArch;RISCV' \
+            -DLLVM_EXTERNAL_PROJECTS='loonglint' \
+            -DLLVM_EXTERNAL_LOONGLINT_SOURCE_DIR="$(pwd)" \
+            -DLLVM_USE_LINKER=mold \
+            -DLOONGLINT_ENABLE_CLANG_TIDY=OFF
+      - name: Build and test
+        run: ninja -C llvm-project/build check-loonglint
