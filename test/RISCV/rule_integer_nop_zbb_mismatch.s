@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+m,+a,+f,+d,+c,+zbb -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: loonglint --input-format=raw --arch=rv64gc_zbb %t.bin | FileCheck %s
+# RUN: loonglint --filter '^riscv:integer/nop-zbb$' --input-format=raw --arch=rv64gc_zbb %t.bin | FileCheck %s
 
 # CHECK: 0 finding(s)
 

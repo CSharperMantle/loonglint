@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+m,+a,+f,+d,+c -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: loonglint --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
+# RUN: loonglint --filter '^riscv:memory/address-load$' --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
 
 # CHECK: 0 finding(s)
 

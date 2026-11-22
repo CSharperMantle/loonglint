@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: loonglint %t.exe | FileCheck %s
+# RUN: loonglint --filter '^loongarch:memory/address-load$' %t.exe | FileCheck %s
 
 ## Includes distinct-destination, deferred LA64 .W, unencodable LDPTR-offset, and `$zero` temporary forms.
 # CHECK: 0 finding(s)

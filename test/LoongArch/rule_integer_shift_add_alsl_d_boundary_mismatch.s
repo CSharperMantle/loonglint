@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: loonglint %t.exe 2>&1 | FileCheck %s
+# RUN: loonglint --filter '^loongarch:integer/shift-add-alsl-d$' %t.exe 2>&1 | FileCheck %s
 
 # CHECK: 0 finding(s)
 

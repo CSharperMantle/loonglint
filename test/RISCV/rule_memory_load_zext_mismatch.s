@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+c -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: loonglint --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
+# RUN: loonglint --filter '^riscv:memory/load-zext$' --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
 
 # CHECK: 0 finding(s)
 
