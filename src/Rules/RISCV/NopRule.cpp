@@ -3,6 +3,7 @@
 #include "loonglint/Rules/RISCV/NopRule.hpp"
 
 #include "loonglint/MCInstMatcher.hpp"
+#include "loonglint/RISCV/RISCVInstr.hpp"
 
 #include "MCTargetDesc/RISCVMCTargetDesc.h"
 
@@ -19,7 +20,7 @@ StringRef NopRule::getID() const {
 }
 
 StringRef NopRule::getDescription() const {
-    return "delete or replace non-canonical nop instruction";
+    return "delete non-canonical nop instruction";
 }
 
 unsigned NopRule::getInstructionCount() const {
@@ -34,6 +35,9 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
 
     const MCInst &I = Instructions.front().Inst;
     const unsigned Opcode = I.getOpcode();
+
+    if (classifyHint(I))
+        return std::nullopt;
 
     switch (Opcode) {
     case RISCV::ADDI:
@@ -100,22 +104,6 @@ std::optional<Rule::Match> NopRule::match(ArrayRef<Instruction> Instructions,
         // (sub rd, x0, rd negates and the s* rd, x0, rs2 forms zero.)
         Reg RdReg;
         if (matchInst(I, Opcode, RdReg, RdReg, Reg(RISCV::X0)) && RdReg.get() != RISCV::X0)
-            return Match{};
-        return std::nullopt;
-    }
-    case RISCV::C_ADDI:
-    case RISCV::C_SLLI: {
-        // c.addi/c.slli rd, 0 (rd=x0 encodes c.nop or a HINT).
-        Reg RdReg;
-        if (matchInst(I, Opcode, RdReg, RdReg, Imm(0)) && RdReg.get() != RISCV::X0)
-            return Match{};
-        return std::nullopt;
-    }
-    case RISCV::C_SRLI:
-    case RISCV::C_SRAI: {
-        // c.srli/c.srai rd', 0. rd' spans x8--x15, never x0.
-        Reg RdReg;
-        if (matchInst(I, Opcode, RdReg, RdReg, Imm(0)))
             return Match{};
         return std::nullopt;
     }

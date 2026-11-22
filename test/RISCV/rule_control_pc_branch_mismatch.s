@@ -1,4 +1,4 @@
-## Reject tail forms, mismatched registers, x0 routing, and out-of-range targets.
+## Reject tail forms, mismatched registers, and out-of-range targets.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+c -filetype=obj %s -o %t.o
@@ -18,8 +18,6 @@ _start:
   jalr  t0, ra, 0
   auipc ra, 0
   jalr  ra, t0, 0
-  auipc x0, 0
-  jalr  x0, x0, 0
   auipc ra, 0x80000
   jalr  ra, ra, 0
 .option pop

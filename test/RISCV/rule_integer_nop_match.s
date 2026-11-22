@@ -9,9 +9,9 @@
 # RUN: ld.lld --entry=_start %t.64.o -o %t.64.exe
 # RUN: not loonglint %t.64.exe | FileCheck %s
 
-# CHECK-COUNT-27: [riscv:integer/nop]
-# CHECK: 27 finding(s)
-# CHECK: 27 riscv:integer/nop
+# CHECK-COUNT-23: [riscv:integer/nop]
+# CHECK: 23 finding(s)
+# CHECK: 23 riscv:integer/nop
 
 .text
 .globl _start
@@ -40,11 +40,9 @@ _start:
   and    s11, s11, s11
   nop
 .option pop
-## Compressed forms.
-  c.addi a0, 0
-  c.slli a1, 0
-  c.srli s0, 0
-  c.srai s0, 0
+## Compressed forms. The copy-to-self c.addi/c.slli/c.srli/c.srai HINTs are
+## ruled out by the classifier; c.addi belongs to integer/reserved-hint and
+## the shifts are unreported.
   c.andi s0, -1
   c.mv   a2, a2
   c.and  s1, s1

@@ -760,14 +760,6 @@ and Rd, Rd, Rd
 # ->
 # delete
 
-c.addi Rd, 0
-# or
-c.slli Rd, 0
-# or
-c.srli Rdprime, 0
-# or
-c.srai Rdprime, 0
-# or
 c.andi Rdprime, -1
 # or
 c.mv Rd, Rd
@@ -785,10 +777,14 @@ RV32/RV64 base ISA plus Zca compressed forms; width-independent.
 
 * Every form writes the register's own value back to itself (`x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width; the compressed forms expand to `addi rd, rd, 0`, `slli/srli/srai rd, rd, 0`, `andi rd, rd, -1`, `add rd, x0, rd`, `and/or rd, rd, rd`).
 * The register-prime forms (`rdprime`) operate on the compressed x8--x15 window, which never includes `x0`.
-* Encodings with rd=x0 are never reported. The ISA manual reserves them as HINTs (RV32I/RV64I HINT tables and the Zca HINT table): the canonical 4-byte `nop` (`addi x0, x0, 0`, encoding `0x00000013`), the canonical 2-byte `c.nop` (encoding `0x0001`), the semihosting markers (`slli x0, x0, 31`, `srai x0, x0, 7`), the NTL family (`add x0, x0, x2`--`x5`, `c.add x0, x2`--`x5`) and the pause fence live there, and their operand fields carry the hint payload. Reporting them could prompt deleting a deliberate hint.
-* The compressed copy-to-self HINTs (`c.addi rd, 0`, `c.slli rd, 0`, `c.srli/c.srai rdprime, 0`) are reported: the manual describes them as "rd overwritten with a copy of itself", no standard toolchain emits them as hints, and implementations must ignore HINTs, so deletion is architecturally inert.
+* HINTs are ruled out before matching.
 * W-suffix forms are never matched: on RV64 they sign-extend the word result, which is not a nop (`addiw rd, rd, 0` is the canonical `sext.w`, and `c.addiw rd, 0` prints as `sext.w`); on RV32 they do not exist.
 * `c.add rd, rd` is not a nop: it expands to `add rd, rd, rd` (doubling), and `rs2=x0` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.
+
+#### Evidence
+
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/rv32.html#t-rv32i-hints>
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/c-st-ext.html#rvc-t-hints>
 
 ### `NopZbaRule` (`riscv:integer/nop-zba`)
 
@@ -1399,6 +1395,24 @@ Base ISA. Same destination; `xori Rd, Rs, -1` is `not` and the pair is two's-com
 
 * <https://github.com/llvm/llvm-project/blob/37b7c17388717199e9669e3ea5bb2a5c9711bbb1/llvm/lib/Target/RISCV/RISCVInstrInfo.td#L1124-L1124>
 * <https://github.com/gcc-mirror/gcc/blob/6afcc4f6da931eb93f3ab001a0dd9650ea71d1ea/gcc/config/riscv/riscv.md#L1617-L1620>
+
+### `ReservedHintRule` (`riscv:integer/reserved-hint`)
+
+```asm
+# HINTs that are neither ratified by standard nor reserved for custom use
+# ->
+# delete
+```
+
+#### Constraints
+
+Base ISA and the C extension. Instructions that are inside the HINT space but marked as "designated for future standard use" are reported. HINTs that have defined semantics or are "designated for custom use" are not reported.
+
+#### Evidence
+
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/rv32.html#1-1-9-hint-instructions>
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/rv64.html#rv64i-h>
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/c-st-ext.html#rvc-hints>
 
 ### `AddressLoadRule` (`riscv:memory/address-load`)
 

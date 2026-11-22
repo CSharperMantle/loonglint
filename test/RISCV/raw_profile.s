@@ -11,4 +11,4 @@
 # BAD-ARCH: loonglint: error: unknown architecture 'rv64gg'
 
 .text
-c.addi a0, 0
+addi a0, a0, 0

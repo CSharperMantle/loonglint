@@ -18,6 +18,6 @@ _start:
   lw   a2, 4(a1)
   addi a3, a4, 8
   flw  fa0, 4(a3)
-  addi x0, a5, 8
+  addi x0, x0, 0
   lw   x0, 4(x0)
 .option pop

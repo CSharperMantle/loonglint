@@ -109,6 +109,7 @@ set(LOONGLINT_RISCV_SOURCES
   src/Rules/RISCV/NotXorRule.cpp
   src/Rules/RISCV/OrNotRule.cpp
   src/Rules/RISCV/PCBranchRule.cpp
+  src/Rules/RISCV/ReservedHintRule.cpp
   src/Rules/RISCV/RotateCombineRule.cpp
   src/Rules/RISCV/SextElimRule.cpp
   src/Rules/RISCV/SextFormRule.cpp

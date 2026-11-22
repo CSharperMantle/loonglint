@@ -22,6 +22,7 @@
 #include "loonglint/Rules/RISCV/NotXorRule.hpp"
 #include "loonglint/Rules/RISCV/OrNotRule.hpp"
 #include "loonglint/Rules/RISCV/PCBranchRule.hpp"
+#include "loonglint/Rules/RISCV/ReservedHintRule.hpp"
 #include "loonglint/Rules/RISCV/RotateCombineRule.hpp"
 #include "loonglint/Rules/RISCV/SextElimRule.hpp"
 #include "loonglint/Rules/RISCV/SextFormRule.hpp"
@@ -135,6 +136,7 @@ SmallVector<std::unique_ptr<Rule>, 0> RISCVSpec::createRules() const {
     Rules.emplace_back(std::make_unique<RISCV::LogicImmediateRule>());
     Rules.emplace_back(std::make_unique<RISCV::AddiPairRule>());
     Rules.emplace_back(std::make_unique<RISCV::NegRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ReservedHintRule>());
     Rules.emplace_back(std::make_unique<RISCV::AddressLoadRule>(*this));
     Rules.emplace_back(std::make_unique<RISCV::LoadZextRule>());
     Rules.emplace_back(std::make_unique<RISCV::BranchToNextRule>());

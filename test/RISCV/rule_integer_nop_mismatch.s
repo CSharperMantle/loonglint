@@ -1,4 +1,4 @@
-## Reject non-NOP logical forms and the reserved rd=x0 HINT encodings.
+## Reject non-NOP logical forms and standard-defined HINTs
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=riscv32-unknown-elf -mattr=+c -filetype=obj %s -o %t.32.o
@@ -42,16 +42,18 @@ _start:
   c.and  s0, s1
   c.xor  s0, s0
   c.li   a0, 0
-## rd=x0 encodings are HINT space and must stay unreported.
+## Standard-mandated HINTs must stay unreported.
 .option push
 .option norvc
-  add    zero, a0, a1
-  add    zero, zero, a1
   slli   zero, zero, 31
   srai   zero, zero, 7
-  addi   zero, zero, 1
   ## The canonical 4-byte NOP is never reported.
   nop
 .option pop
   ## The canonical 2-byte C.NOP is never reported.
   c.nop
+## The compressed copy-to-self HINTs are ruled out by the classifier. The
+## c.addi form belongs to integer/reserved-hint; the shifts are unreported.
+  c.slli a1, 0
+  c.srli s0, 0
+  c.srai s0, 0
