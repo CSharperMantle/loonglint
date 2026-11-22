@@ -84,10 +84,14 @@ std::optional<Rule::Match> ZeroConsumerRule::match(ArrayRef<Instruction> Instruc
         // ...if it equals Rd...
         if (!Op.isReg() || Op.getReg() != Rd)
             continue;
+        // ...and is not tied to any defs...
+        const int Tied = MID.getOperandConstraint(Idx, MCOI::TIED_TO);
+        if (Tied >= 0 && static_cast<unsigned>(Tied) < MID.getNumDefs())
+            continue;
         assert(MOI.RegClass >= 0);
         // ...and its slot can house the zero register...
         if (!Ctx.MRI.getRegClass(MOI.RegClass).contains(LoongArch::R0))
-            return std::nullopt;
+            continue;
         // ...then plug it in.
         Op.setReg(LoongArch::R0);
         Changed = true;

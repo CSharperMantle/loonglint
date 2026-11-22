@@ -35,8 +35,11 @@
 # CHECK: lu12i.w $t4, 0
 # CHECK: sc.w $a5, $t4, 0
 # CHECK: sc.w $a5, $zero, 0
-# CHECK: 10 finding(s)
-# CHECK: 10 loongarch:integer/zero-consumer
+# CHECK: ori $t8, $zero, 0
+# CHECK: add.d $t8, $t8, $a1
+# CHECK: add.d $t8, $zero, $a1
+# CHECK: 11 finding(s)
+# CHECK: 11 loongarch:integer/zero-consumer
 
 .text
 .globl _start
@@ -61,3 +64,5 @@ _start:
   add.w $t1, $t1, $a2
   lu12i.w $t4, 0
   sc.w $a5, $t4, 0
+  ori $t8, $zero, 0
+  add.d $t8, $t8, $a1

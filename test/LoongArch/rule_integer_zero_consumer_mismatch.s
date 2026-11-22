@@ -1,4 +1,4 @@
-## Reject atomic consumers whose destination is the materialized register and consumers that never read it (LA64).
+## Reject consumers with no rewritable source operand.
 ## SPDX-License-Identifier: GPL-3.0-or-later
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
@@ -16,3 +16,5 @@ _start:
   .word 0x38611144
   or $t8, $zero, $zero
   add.w $t8, $a1, $a2
+  ori $a0, $zero, 0
+  lu32i.d $a0, 8
