@@ -4,6 +4,7 @@
 #define LOONGLINT_RISCV_RISCVINSTR_HPP
 
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCRegister.h"
 
 #include <optional>
 
@@ -16,6 +17,8 @@ enum class HintKind {
 };
 
 std::optional<HintKind> classifyHint(const llvm::MCInst &Inst);
+
+std::optional<llvm::MCRegister> matchZeroWrite(const llvm::MCInst &Inst);
 
 } // namespace loonglint::RISCV
 

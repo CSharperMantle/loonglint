@@ -204,4 +204,87 @@ std::optional<HintKind> classifyHint(const llvm::MCInst &Inst) {
     return std::nullopt;
 }
 
+std::optional<MCRegister> matchZeroWrite(const MCInst &Inst) {
+    using namespace LowLevelInstMatcherDSL;
+
+    Reg RdReg, RsReg;
+    switch (Inst.getOpcode()) {
+    case RISCV::ADDI:
+        if (!matchInst(Inst, RISCV::ADDI, RdReg, Reg(RISCV::X0), Imm(0)))
+            return std::nullopt;
+        break;
+    case RISCV::C_LI:
+        if (!matchInst(Inst, RISCV::C_LI, RdReg, Imm(0)))
+            return std::nullopt;
+        break;
+    case RISCV::XOR:
+    case RISCV::SUB:
+    case RISCV::SUBW:
+    case RISCV::SLT:
+    case RISCV::SLTU:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, RsReg, RsReg))
+            return std::nullopt;
+        break;
+    case RISCV::AND: {
+        Reg Rs1Reg, Rs2Reg;
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Rs1Reg, Rs2Reg) ||
+            (Rs1Reg.get() != RISCV::X0 && Rs2Reg.get() != RISCV::X0))
+            return std::nullopt;
+        break;
+    }
+    case RISCV::ANDI: {
+        Imm TheImm;
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, RsReg, TheImm) ||
+            (RsReg.get() != RISCV::X0 && TheImm.get() != 0))
+            return std::nullopt;
+        break;
+    }
+    case RISCV::SLTIU:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(), Imm(0)))
+            return std::nullopt;
+        break;
+    case RISCV::SLLI:
+    case RISCV::SRLI:
+    case RISCV::SRAI:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(RISCV::X0), Imm()))
+            return std::nullopt;
+        break;
+    case RISCV::SLL:
+    case RISCV::SRL:
+    case RISCV::SRA:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(RISCV::X0), Reg()))
+            return std::nullopt;
+        break;
+    case RISCV::SLLIW:
+    case RISCV::SRLIW:
+    case RISCV::SRAIW:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(RISCV::X0), Imm()))
+            return std::nullopt;
+        break;
+    case RISCV::SLLW:
+    case RISCV::SRLW:
+    case RISCV::SRAW:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(RISCV::X0), Reg()))
+            return std::nullopt;
+        break;
+    case RISCV::LUI:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Imm(0)))
+            return std::nullopt;
+        break;
+    case RISCV::ADD:
+    case RISCV::OR:
+    case RISCV::ADDW:
+        if (!matchInst(Inst, Inst.getOpcode(), RdReg, Reg(RISCV::X0), Reg(RISCV::X0)))
+            return std::nullopt;
+        break;
+    case RISCV::C_XOR:
+        if (!matchInst(Inst, RISCV::C_XOR, RdReg, RdReg, RdReg))
+            return std::nullopt;
+        break;
+    default:
+        return std::nullopt;
+    }
+    return RdReg.get();
+}
+
 } // namespace loonglint::RISCV

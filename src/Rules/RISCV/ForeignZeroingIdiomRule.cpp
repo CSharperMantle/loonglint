@@ -40,86 +40,23 @@ std::optional<Rule::Match> ForeignZeroingIdiomRule::match(ArrayRef<Instruction> 
 
     if (classifyHint(I))
         return std::nullopt;
-
-    Reg RdReg, RsReg;
-    switch (Opcode) {
-    case RISCV::XOR:
-    case RISCV::SUB:
-    case RISCV::SUBW:
-    case RISCV::SLT:
-    case RISCV::SLTU:
-        if (!matchInst(I, Opcode, RdReg, RsReg, RsReg))
-            return std::nullopt;
-        break;
-    case RISCV::AND: {
-        Reg Rs1Reg, Rs2Reg;
-        if (!matchInst(I, Opcode, RdReg, Rs1Reg, Rs2Reg) ||
-            (Rs1Reg.get() != RISCV::X0 && Rs2Reg.get() != RISCV::X0))
-            return std::nullopt;
-        break;
-    }
-    case RISCV::ANDI: {
-        Imm TheImm;
-        if (!matchInst(I, Opcode, RdReg, RsReg, TheImm) ||
-            (RsReg.get() != RISCV::X0 && TheImm.get() != 0))
-            return std::nullopt;
-        break;
-    }
-    case RISCV::SLTIU:
-        if (!matchInst(I, Opcode, RdReg, Reg(), Imm(0)))
-            return std::nullopt;
-        break;
-    case RISCV::SLLI:
-    case RISCV::SRLI:
-    case RISCV::SRAI:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Imm()))
-            return std::nullopt;
-        break;
-    case RISCV::SLL:
-    case RISCV::SRL:
-    case RISCV::SRA:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Reg()))
-            return std::nullopt;
-        break;
-    case RISCV::LUI:
-        if (!matchInst(I, Opcode, RdReg, Imm(0)))
-            return std::nullopt;
-        break;
-    case RISCV::ADD:
-    case RISCV::OR:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Reg(RISCV::X0)))
-            return std::nullopt;
-        break;
-    case RISCV::SLLIW:
-    case RISCV::SRLIW:
-    case RISCV::SRAIW:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Imm()))
-            return std::nullopt;
-        break;
-    case RISCV::SLLW:
-    case RISCV::SRLW:
-    case RISCV::SRAW:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Reg()))
-            return std::nullopt;
-        break;
-    case RISCV::ADDW:
-        if (!matchInst(I, Opcode, RdReg, Reg(RISCV::X0), Reg(RISCV::X0)))
-            return std::nullopt;
-        break;
-    case RISCV::C_XOR: {
-        if (!matchInst(I, Opcode, RdReg, RdReg, RdReg))
-            return std::nullopt;
-        Rule::Match Result;
-        Result.Replacement.emplace_back(MCInstBuilder(RISCV::C_LI).addReg(RdReg.get()).addImm(0));
-        return Result;
-    }
-    default:
+    // c.li rd, 0 is already canonical.
+    if (matchInst(I, RISCV::C_LI, Reg(), Imm(0)))
         return std::nullopt;
-    }
+    // mv rd, zero is already canonical.
+    if (matchInst(I, RISCV::ADDI, Reg(), Reg(RISCV::X0), Imm(0)))
+        return std::nullopt;
+
+    const std::optional<MCRegister> ZeroRd = matchZeroWrite(I);
+    if (!ZeroRd)
+        return std::nullopt;
 
     Rule::Match Result;
-    Result.Replacement.emplace_back(
-        MCInstBuilder(RISCV::ADDI).addReg(RdReg.get()).addReg(RISCV::X0).addImm(0));
+    if (Opcode == RISCV::C_XOR)
+        Result.Replacement.emplace_back(MCInstBuilder(RISCV::C_LI).addReg(*ZeroRd).addImm(0));
+    else
+        Result.Replacement.emplace_back(
+            MCInstBuilder(RISCV::ADDI).addReg(*ZeroRd).addReg(RISCV::X0).addImm(0));
     return Result;
 }
 
