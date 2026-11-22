@@ -1414,6 +1414,76 @@ Base ISA and the C extension. Instructions that are inside the HINT space but ma
 * <https://docs.riscv.org/reference/isa/v20260120/unpriv/rv64.html#rv64i-h>
 * <https://docs.riscv.org/reference/isa/v20260120/unpriv/c-st-ext.html#rvc-hints>
 
+### `ForeignZeroingIdiomRule` (`riscv:integer/foreign-zeroing-idiom`)
+
+```asm
+xor Rd, Rs, Rs
+# or
+sub Rd, Rs, Rs
+# or
+subw Rd, Rs, Rs
+# or
+and Rd, zero, Rs
+# or
+and Rd, Rs, zero
+# or
+andi Rd, Rs, 0
+# or
+andi Rd, zero, Imm
+# or
+slt Rd, Rs, Rs
+# or
+sltu Rd, Rs, Rs
+# or
+sltiu Rd, Rs, 0
+# or
+slli Rd, zero, Shamt
+# or
+srli Rd, zero, Shamt
+# or
+srai Rd, zero, Shamt
+# or
+sll Rd, zero, Rs
+# or
+srl Rd, zero, Rs
+# or
+sra Rd, zero, Rs
+# or
+slliw Rd, zero, Shamt
+# or
+srliw Rd, zero, Shamt
+# or
+sraiw Rd, zero, Shamt
+# or
+sllw Rd, zero, Rs
+# or
+srlw Rd, zero, Rs
+# or
+sraw Rd, zero, Rs
+# or
+lui Rd, 0
+# or
+add Rd, zero, zero
+# or
+or Rd, zero, zero
+# or
+addw Rd, zero, zero
+# ->
+addi Rd, zero, 0
+
+c.xor Rd', Rd'
+# ->
+c.li Rd', 0
+```
+
+#### Constraints
+
+Base ISA plus the Zca `c.xor` form; the OP-32 arms (`subw`, the `*iw`/`*w` shifts, `addw`) decode on RV64 only. The compressed `Rd'` window spans x8--x15 and never includes `zero`.
+
+#### Evidence
+
+* <https://riscv-optimization-guide.riseproject.dev/#_make_effective_use_of_the_x0_register>
+
 ### `AddressLoadRule` (`riscv:memory/address-load`)
 
 ```asm

@@ -12,6 +12,7 @@
 #include "loonglint/Rules/RISCV/BranchToNextRule.hpp"
 #include "loonglint/Rules/RISCV/BsetRule.hpp"
 #include "loonglint/Rules/RISCV/DegenerateBranchRule.hpp"
+#include "loonglint/Rules/RISCV/ForeignZeroingIdiomRule.hpp"
 #include "loonglint/Rules/RISCV/LoadZextRule.hpp"
 #include "loonglint/Rules/RISCV/LogicImmediateRule.hpp"
 #include "loonglint/Rules/RISCV/NegRule.hpp"
@@ -137,6 +138,7 @@ SmallVector<std::unique_ptr<Rule>, 0> RISCVSpec::createRules() const {
     Rules.emplace_back(std::make_unique<RISCV::AddiPairRule>());
     Rules.emplace_back(std::make_unique<RISCV::NegRule>());
     Rules.emplace_back(std::make_unique<RISCV::ReservedHintRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ForeignZeroingIdiomRule>());
     Rules.emplace_back(std::make_unique<RISCV::AddressLoadRule>(*this));
     Rules.emplace_back(std::make_unique<RISCV::LoadZextRule>());
     Rules.emplace_back(std::make_unique<RISCV::BranchToNextRule>());
