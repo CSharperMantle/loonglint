@@ -59,6 +59,7 @@ set(LOONGLINT_ENGINE_SOURCES
 )
 
 set(LOONGLINT_LOONGARCH_SOURCES
+  src/LoongArch/LoongArchInstr.cpp
   src/LoongArch/LoongArchSpec.cpp
   src/Rules/LoongArch/AddiPairRule.cpp
   src/Rules/LoongArch/AddressLoadRule.cpp
