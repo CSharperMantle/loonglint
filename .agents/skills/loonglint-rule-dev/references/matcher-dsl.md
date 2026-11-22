@@ -18,7 +18,7 @@ if (matchInst(Inst, LoongArch::LD_D, RdReg, RjReg, Si12Imm)) {
 }
 ```
 
-- `matchInst(Inst, Opcode, matchers...)` fails unless the opcode equals `Opcode` **and** the operand count is exactly `sizeof...(matchers)` -- no variadic slack.
+- `matchInst(Inst, Opcode, matchers...)` fails unless the opcode equals `Opcode` **and** the operand sequences prefix matches the list specified by `matchers...`.
 - A matcher with no captured value binds; one that already holds a value succeeds only on equality.
 - All-or-nothing with rollback: any operand failure restores every matcher. A failed `matchInst` leaves no trace; a successful one leaves all captures.
 - Captures persist across `matchInst` calls within one `match()` -- this enables cross-instruction dataflow constraints and is also the easiest way to write an unintended constraint.
