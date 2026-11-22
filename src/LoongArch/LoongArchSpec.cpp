@@ -11,6 +11,7 @@
 #include "loonglint/Rules/LoongArch/BranchToNextRule.hpp"
 #include "loonglint/Rules/LoongArch/ByteReverseRule.hpp"
 #include "loonglint/Rules/LoongArch/DegenerateBranchRule.hpp"
+#include "loonglint/Rules/LoongArch/ForeignZeroingIdiomRule.hpp"
 #include "loonglint/Rules/LoongArch/IndexedLoadRule.hpp"
 #include "loonglint/Rules/LoongArch/LoadExtendRule.hpp"
 #include "loonglint/Rules/LoongArch/LoadZeroExtendRule.hpp"

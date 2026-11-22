@@ -715,6 +715,187 @@ LA32/LA64.
 * Leave `beq $zero, $zero` and alike to `DegenerateBranchRule`.
 * Leave branching to PC + 4 to `BranchToNextRule`.
 
+### `ForeignZeroingIdiomRule` (`loongarch:integer/foreign-zeroing-idiom`)
+
+```asm
+add.w Rd, $zero, $zero
+# or
+add.d Rd, $zero, $zero
+# or
+sub.w Rd, Rs, Rs
+# or
+sub.d Rd, Rs, Rs
+# or
+addi.w Rd, $zero, 0
+# or
+addi.d Rd, $zero, 0
+# or
+addu16i.d Rd, $zero, 0
+# or
+alsl.w Rd, $zero, $zero, Sa2
+# or
+alsl.wu Rd, $zero, $zero, Sa2
+# or
+alsl.d Rd, $zero, $zero, Sa2
+# or
+lu12i.w Rd, 0
+# or
+lu52i.d Rd, $zero, 0
+# or
+slt Rd, Rs, Rs
+# or
+sltu Rd, Rs, Rs
+# or
+slti Rd, $zero, Si12
+# or
+sltui Rd, Rs, 0
+# or
+and Rd, $zero, Rs
+# or
+and Rd, Rs, $zero
+# or
+xor Rd, Rs, Rs
+# or
+andn Rd, $zero, Rs
+# or
+andi Rd, Rs, 0
+# or
+andi Rd, $zero, Ui12
+# or
+mul.w Rd, $zero, Rs
+# or
+mul.w Rd, Rs, $zero
+# or
+mulh.w Rd, $zero, Rs
+# or
+mulh.w Rd, Rs, $zero
+# or
+mulh.wu Rd, $zero, Rs
+# or
+mulh.wu Rd, Rs, $zero
+# or
+mul.d Rd, $zero, Rs
+# or
+mul.d Rd, Rs, $zero
+# or
+mulh.d Rd, $zero, Rs
+# or
+mulh.d Rd, Rs, $zero
+# or
+mulh.du Rd, $zero, Rs
+# or
+mulh.du Rd, Rs, $zero
+# or
+mulw.d.w Rd, $zero, Rs
+# or
+mulw.d.w Rd, Rs, $zero
+# or
+mulw.d.wu Rd, $zero, Rs
+# or
+mulw.d.wu Rd, Rs, $zero
+# or
+sll.w Rd, $zero, Rk
+# or
+srl.w Rd, $zero, Rk
+# or
+sra.w Rd, $zero, Rk
+# or
+rotr.w Rd, $zero, Rk
+# or
+slli.w Rd, $zero, Ui5
+# or
+srli.w Rd, $zero, Ui5
+# or
+srai.w Rd, $zero, Ui5
+# or
+rotri.w Rd, $zero, Ui5
+# or
+sll.d Rd, $zero, Rk
+# or
+srl.d Rd, $zero, Rk
+# or
+sra.d Rd, $zero, Rk
+# or
+rotr.d Rd, $zero, Rk
+# or
+slli.d Rd, $zero, Ui6
+# or
+srli.d Rd, $zero, Ui6
+# or
+srai.d Rd, $zero, Ui6
+# or
+rotri.d Rd, $zero, Ui6
+# or
+ext.w.b Rd, $zero
+# or
+ext.w.h Rd, $zero
+# or
+clo.w Rd, $zero
+# or
+cto.w Rd, $zero
+# or
+clo.d Rd, $zero
+# or
+cto.d Rd, $zero
+# or
+bytepick.w Rd, Rs, $zero, 0
+# or
+bytepick.w Rd, $zero, $zero, Sa2
+# or
+bytepick.d Rd, Rs, $zero, 0
+# or
+bytepick.d Rd, $zero, $zero, Sa3
+# or
+revb.2h Rd, $zero
+# or
+revb.4h Rd, $zero
+# or
+revb.2w Rd, $zero
+# or
+revb.d Rd, $zero
+# or
+revh.2w Rd, $zero
+# or
+revh.d Rd, $zero
+# or
+bitrev.4b Rd, $zero
+# or
+bitrev.8b Rd, $zero
+# or
+bitrev.w Rd, $zero
+# or
+bitrev.d Rd, $zero
+# or
+bstrins.w Rd, $zero, 31, 0
+# or
+bstrins.d Rd, $zero, 63, 0
+# or
+bstrpick.w Rd, $zero, Msbw, Lsbw
+# or
+bstrpick.d Rd, $zero, Msbd, Lsbd
+# or
+maskeqz Rd, Rs, $zero
+# or
+maskeqz Rd, $zero, Rk
+# or
+masknez Rd, $zero, Rk
+# ->
+move Rd, $zero
+```
+
+#### Constraints
+
+LA32/LA64; the `.D` forms, `addu16i.d`, `lu52i.d`, and `alsl.wu` decode on LA64 only.
+
+* The replacement is the zero-materialization spelling emitted by GNU as for `li.w`/`li.d` 0 and by the LLVM instruction selector for constant zero.
+* `or rd, $zero, $zero` (aka `move rd, $zero`) and `ori rd, $zero, 0` are already canonical and never reported.
+
+#### Evidence
+
+* <https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html>
+* <https://github.com/loongson/la-asm-manual>
+* <https://sourceware.org/cgit/binutils-gdb/tree/gas/config/tc-loongarch.c#n1331> (`assember_macro_helper`)
+
 ## RISC-V rules
 
 ### `NopRule` (`riscv:integer/nop`)
