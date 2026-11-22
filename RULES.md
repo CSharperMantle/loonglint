@@ -734,25 +734,25 @@ srli Rd, Rd, 0
 # or
 srai Rd, Rd, 0
 # or
-add Rd, Rd, x0
+add Rd, Rd, zero
 # or
-add Rd, x0, Rd
+add Rd, zero, Rd
 # or
-sub Rd, Rd, x0
+sub Rd, Rd, zero
 # or
-sll Rd, Rd, x0
+sll Rd, Rd, zero
 # or
-srl Rd, Rd, x0
+srl Rd, Rd, zero
 # or
-sra Rd, Rd, x0
+sra Rd, Rd, zero
 # or
-xor Rd, Rd, x0
+xor Rd, Rd, zero
 # or
-xor Rd, x0, Rd
+xor Rd, zero, Rd
 # or
-or Rd, Rd, x0
+or Rd, Rd, zero
 # or
-or Rd, x0, Rd
+or Rd, zero, Rd
 # or
 or Rd, Rd, Rd
 # or
@@ -775,11 +775,11 @@ c.or Rdprime, Rdprime
 
 RV32/RV64 base ISA plus Zca compressed forms; width-independent.
 
-* Every form writes the register's own value back to itself (`x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width; the compressed forms expand to `addi rd, rd, 0`, `slli/srli/srai rd, rd, 0`, `andi rd, rd, -1`, `add rd, x0, rd`, `and/or rd, rd, rd`).
-* The register-prime forms (`rdprime`) operate on the compressed x8--x15 window, which never includes `x0`.
+* Every form writes the register's own value back to itself (`x + 0 = x`, `x - 0 = x`, `x << 0 = x`, `x | 0 = x`, `x | x = x`, `x & x = x`, `x & ~0 = x`, `x ^ 0 = x` at the native register width; the compressed forms expand to `addi rd, rd, 0`, `slli/srli/srai rd, rd, 0`, `andi rd, rd, -1`, `add rd, zero, rd`, `and/or rd, rd, rd`).
+* The register-prime forms (`rdprime`) operate on the compressed x8--x15 window, which never includes `zero`.
 * HINTs are ruled out before matching.
 * W-suffix forms are never matched: on RV64 they sign-extend the word result, which is not a nop (`addiw rd, rd, 0` is the canonical `sext.w`, and `c.addiw rd, 0` prints as `sext.w`); on RV32 they do not exist.
-* `c.add rd, rd` is not a nop: it expands to `add rd, rd, rd` (doubling), and `rs2=x0` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.
+* `c.add rd, rd` is not a nop: it expands to `add rd, rd, rd` (doubling), and `rs2=zero` encodes `c.jalr`/`c.ebreak` instead. `c.xor rdprime, rdprime` zeroes. `c.lui`, `c.li rd, 0` and `c.addi16sp` with zero immediates are reserved encodings or zeroing forms.
 
 #### Evidence
 
@@ -789,16 +789,16 @@ RV32/RV64 base ISA plus Zca compressed forms; width-independent.
 ### `NopZbaRule` (`riscv:integer/nop-zba`)
 
 ```asm
-sh1add/sh2add/sh3add Rd, X0, Rd
+sh1add/sh2add/sh3add Rd, zero, Rd
 # or
-add.uw/sh1add.uw/sh2add.uw/sh3add.uw Rd, X0, Rd
+add.uw/sh1add.uw/sh2add.uw/sh3add.uw Rd, zero, Rd
 # ->
 # delete
 ```
 
 #### Constraints
 
-Zba; gated on `hasZba()`. rd != x0, the shifted/zero-extended operand is `X0`, and the addend is the destination: `(0 << N) + rd = rd` and `zext32(0) + rd = rd`.
+Zba; gated on `hasZba()`. rd != zero, the shifted/zero-extended operand is `zero`, and the addend is the destination: `(0 << N) + rd = rd` and `zext32(0) + rd = rd`.
 
 #### Evidence
 
@@ -814,7 +814,7 @@ min/minu/max/maxu Rd, Rd, Rd
 
 #### Constraints
 
-Zbb; gated on `hasZbb()`. rd != x0, and the two compared operands are both the destination: comparing a value with itself writes the value back.
+Zbb; gated on `hasZbb()`. rd != zero, and the two compared operands are both the destination: comparing a value with itself writes the value back.
 
 #### Evidence
 
@@ -823,18 +823,18 @@ Zbb; gated on `hasZbb()`. rd != x0, and the two compared operands are both the d
 ### `NopZbkbRule` (`riscv:integer/nop-zbkb`)
 
 ```asm
-rol/ror Rd, Rd, X0
+rol/ror Rd, Rd, zero
 # or
 rori Rd, Rd, 0
 # or
-andn Rd, Rd, X0
+andn Rd, Rd, zero
 # ->
 # delete
 ```
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. rd != x0. Rotating by zero is a nop, and `rd & ~0 = rd`. The `min`/`max` identity family is Zbb-only and lives in `NopZbbRule`.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. rd != zero. Rotating by zero is a nop, and `rd & ~0 = rd`. The `min`/`max` identity family is Zbb-only and lives in `NopZbbRule`.
 
 #### Evidence
 
@@ -863,7 +863,7 @@ addi Rd, Rs, 0 (mv)
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. Same-destination chain (the first destination is the second destination and source), the same immediate N in both instructions, and rd != x0. `bclri`/`bseti` are idempotent; `binvi` is an involution.
+Zbs; gated on `hasZbs()`. Same-destination chain (the first destination is the second destination and source), the same immediate N in both instructions, and rd != zero. `bclri`/`bseti` are idempotent; `binvi` is an involution.
 
 #### Evidence
 
@@ -881,7 +881,7 @@ addiw Rd, Rs, 0
 
 #### Constraints
 
-RV64 base ISA; gated on `isRV64()`. The `XLEN-32` shifts keep only the low word and sign-extend it, which `addiw Rd, Rs, 0` (printed `sext.w`) does in one instruction. rd=x0 stays excluded by the NopRule HINT policy.
+RV64 base ISA; gated on `isRV64()`. The `XLEN-32` shifts keep only the low word and sign-extend it, which `addiw Rd, Rs, 0` (printed `sext.w`) does in one instruction. rd=zero stays excluded by the NopRule HINT policy.
 
 #### Evidence
 
@@ -913,7 +913,7 @@ addiw Rd, Rd, 0
 
 #### Constraints
 
-RV64 base ISA; gated on `isRV64()`. The explicit `sext.w` (`addiw Rd, Rd, 0`, also encoded as `c.addiw Rd, 0`) is redundant when the producer already sign-extends its word result: the producer set is exactly LLVM's `IsSignExtendingOpW` TSFlag, which the rule reads directly, plus `c.addiw` (compressed instructions carry no flag). `lwu` is excluded: it zero-extends, so a following `sext.w` changes the value. `auipc` is excluded. The producer must write the `addiw` destination, and rd=x0 stays excluded by the NopRule HINT policy.
+RV64 base ISA; gated on `isRV64()`. The explicit `sext.w` (`addiw Rd, Rd, 0`, also encoded as `c.addiw Rd, 0`) is redundant when the producer already sign-extends its word result: the producer set is exactly LLVM's `IsSignExtendingOpW` TSFlag, which the rule reads directly, plus `c.addiw` (compressed instructions carry no flag). `lwu` is excluded: it zero-extends, so a following `sext.w` changes the value. `auipc` is excluded. The producer must write the `addiw` destination, and rd=zero stays excluded by the NopRule HINT policy.
 
 #### Evidence
 
@@ -937,7 +937,7 @@ sext.b Rd, Rs
 
 #### Constraints
 
-Zbb; gated on `hasZbb()`. Same destination, rd=x0 excluded. The shift amounts are `XLEN-16` (48 on RV64, 16 on RV32) and `XLEN-8` (56/24). The `slli`/`srai` pair is the generalized byte/halfword sign-extension idiom that `sext.b`/`sext.h` fuse.
+Zbb; gated on `hasZbb()`. Same destination, rd=zero excluded. The shift amounts are `XLEN-16` (48 on RV64, 16 on RV32) and `XLEN-8` (56/24). The `slli`/`srai` pair is the generalized byte/halfword sign-extension idiom that `sext.b`/`sext.h` fuse.
 
 #### Evidence
 
@@ -970,7 +970,7 @@ sext.h Rd, Rd
 
 #### Constraints
 
-Zbb; gated on `hasZbb()`. Same destination, rd=x0 excluded. `LB` already sign-extends a byte, so a following `sext.b` or `sext.h` is a nop; `LH` already sign-extends a halfword, so `sext.h` is a nop. The extension arms are idempotent, and `sext.h` after `sext.b` is also redundant because a byte-extended value is already halfword-extended; `sext.b` after `sext.h` is not (it narrows the value).
+Zbb; gated on `hasZbb()`. Same destination, rd=zero excluded. `LB` already sign-extends a byte, so a following `sext.b` or `sext.h` is a nop; `LH` already sign-extends a halfword, so `sext.h` is a nop. The extension arms are idempotent, and `sext.h` after `sext.b` is also redundant because a byte-extended value is already halfword-extended; `sext.b` after `sext.h` is not (it narrows the value).
 
 #### Evidence
 
@@ -988,7 +988,7 @@ zext.h Rd, Rs
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded. The shift amount is `XLEN-16` (48 on RV64, 16 on RV32). The `slli`/`srli` pair keeps only the low halfword, which `zext.h` fuses.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=zero excluded. The shift amount is `XLEN-16` (48 on RV64, 16 on RV32). The `slli`/`srli` pair keeps only the low halfword, which `zext.h` fuses.
 
 #### Evidence
 
@@ -1019,7 +1019,7 @@ zext.h Rd, Rd
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded. The deletion arm's producer must be statically known to fit in 16 bits: `lbu`, `lhu`, `zext.h` itself, `andi` with a non-negative immediate (result at most 2047), or `srli` by at least `XLEN-16`.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=zero excluded. The deletion arm's producer must be statically known to fit in 16 bits: `lbu`, `lhu`, `zext.h` itself, `andi` with a non-negative immediate (result at most 2047), or `srli` by at least `XLEN-16`.
 
 #### Evidence
 
@@ -1033,12 +1033,12 @@ Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, rd=x0 excluded.
 slli Rd, Rs, 32
 srli Rd, Rd, 32
 # ->
-add.uw Rd, Rs, X0 (zext.w)
+add.uw Rd, Rs, zero (zext.w)
 ```
 
 #### Constraints
 
-Zba and RV64; gated on `hasZba() && isRV64()`. Same destination, rd=x0 excluded. The `XLEN-32` shifts keep only the low word, which `zext.w` (`add.uw Rd, Rs, X0`) fuses.
+Zba and RV64; gated on `hasZba() && isRV64()`. Same destination, rd=zero excluded. The `XLEN-32` shifts keep only the low word, which `zext.w` (`add.uw Rd, Rs, zero`) fuses.
 
 #### Evidence
 
@@ -1049,26 +1049,26 @@ Zba and RV64; gated on `hasZba() && isRV64()`. Same destination, rd=x0 excluded.
 
 ```asm
 lwu/lbu/lhu Rd, Off(Rs1)
-add.uw Rd, Rd, X0
+add.uw Rd, Rd, zero
 # or
 zext.h Rd, Rs
-add.uw Rd, Rd, X0
+add.uw Rd, Rd, zero
 # or
-add.uw Rd, Rs, X0
-add.uw Rd, Rd, X0
+add.uw Rd, Rs, zero
+add.uw Rd, Rd, zero
 # or
 andi Rd, Rs, Imm
-add.uw Rd, Rd, X0
+add.uw Rd, Rd, zero
 # or
 srli Rd, Rs, N
-add.uw Rd, Rd, X0
+add.uw Rd, Rd, zero
 # ->
 # delete the add.uw
 ```
 
 #### Constraints
 
-Zba and RV64; gated on `hasZba() && isRV64()`. `zext.w` is the `add.uw rd, rs, x0` alias, so the second instruction is redundant when its destination already holds a value that fits in 32 bits: `lwu`, `lbu`/`lhu`, `zext.h`, `add.uw` with `X0` as the addend (`zext32(Rs1) + Rs2` is 32-bit-bounded only then), `andi` with a non-negative immediate, and `srli` by at least 32. rd=x0 excluded.
+Zba and RV64; gated on `hasZba() && isRV64()`. `zext.w` is the `add.uw rd, rs, zero` alias, so the second instruction is redundant when its destination already holds a value that fits in 32 bits: `lwu`, `lbu`/`lhu`, `zext.h`, `add.uw` with `zero` as the addend (`zext32(Rs1) + Rs2` is 32-bit-bounded only then), `andi` with a non-negative immediate, and `srli` by at least 32. rd=zero excluded.
 
 #### Evidence
 
@@ -1078,18 +1078,18 @@ Zba and RV64; gated on `hasZba() && isRV64()`. `zext.w` is the `add.uw rd, rs, x
 ### `ZextWFoldRule` (`riscv:integer/zext-w-fold`)
 
 ```asm
-add.uw Tmp, Rs1, X0
+add.uw Tmp, Rs1, zero
 add Rd, Tmp, Rs2
 # or add Rd, Rs2, Tmp
 # ->
 add.uw Rd, Rs1, Rs2
 
-add.uw Tmp, Rs1, X0
+add.uw Tmp, Rs1, zero
 sh1add/sh2add/sh3add Rd, Tmp, Rs2
 # ->
 sh1add.uw/sh2add.uw/sh3add.uw Rd, Rs1, Rs2
 
-add.uw Tmp, Rs1, X0
+add.uw Tmp, Rs1, zero
 slli Rd, Tmp, N
 # ->
 slli.uw Rd, Rs1, N
@@ -1097,7 +1097,7 @@ slli.uw Rd, Rs1, N
 
 #### Constraints
 
-Zba and RV64; gated on `hasZba() && isRV64()`. Same-destination chains (the consuming op's destination equals the `zext.w` temporary), the consuming op's other source (`Rs2`) must not alias that temporary, `zext.w` is the `add.uw rd, rs, x0` alias, N within the `slli.uw` immediate field (N >= 1; a zero shift is a nop owned by `NopRule`), and rd=x0 excluded. Operations: `X(rd) = X(rs2) + zext32(X(rs1))` for `add.uw` and `X(rd) = zext32(X(rs1)) << shamt` for `slli.uw`.
+Zba and RV64; gated on `hasZba() && isRV64()`. Same-destination chains (the consuming op's destination equals the `zext.w` temporary), the consuming op's other source (`Rs2`) must not alias that temporary, `zext.w` is the `add.uw rd, rs, zero` alias, N within the `slli.uw` immediate field (N >= 1; a zero shift is a nop owned by `NopRule`), and rd=zero excluded. Operations: `X(rd) = X(rs2) + zext32(X(rs1))` for `add.uw` and `X(rd) = zext32(X(rs1)) << shamt` for `slli.uw`.
 
 #### Evidence
 
@@ -1157,7 +1157,7 @@ sh1add/sh2add/sh3add Rd, Rs1, Rs2
 
 #### Constraints
 
-Zba (`sh1add`/`sh2add`/`sh3add` exist on RV32 and RV64); gated on `hasZba()`. Same destination (the `add` destination equals the `slli` destination), `Rs2` must not alias `Rd` (the `slli` overwrites it before the `add` reads it), N in 1..3, rd=x0 excluded. `add` is commutative, so either operand order matches. Operation: `X(rd) = X(rs2) + (X(rs1) << N)`.
+Zba (`sh1add`/`sh2add`/`sh3add` exist on RV32 and RV64); gated on `hasZba()`. Same destination (the `add` destination equals the `slli` destination), `Rs2` must not alias `Rd` (the `slli` overwrites it before the `add` reads it), N in 1..3, rd=zero excluded. `add` is commutative, so either operand order matches. Operation: `X(rd) = X(rs2) + (X(rs1) << N)`.
 
 #### Evidence
 
@@ -1178,7 +1178,7 @@ rori Rd, Rs, (Shamt0+Shamt1) mod XLEN
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, both amounts nonzero, rd=x0 excluded. Both amounts are immediate rotate amounts, so the composed amount is always encodable modulo XLEN. The 3-instruction `srli`+`slli`+`or` -> `rori` formation needs both shift temporaries dead and stays deferred.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. Same destination, both amounts nonzero, rd=zero excluded. Both amounts are immediate rotate amounts, so the composed amount is always encodable modulo XLEN. The 3-instruction `srli`+`slli`+`or` -> `rori` formation needs both shift temporaries dead and stays deferred.
 
 #### Evidence
 
@@ -1197,7 +1197,7 @@ andn Rd, Rs1, Rs2
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `and` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary (the `xori` would clobber it), and `Rs2` must not be the temporary itself: the self-inverted form is the Zbs mask-materialization middle owned by `BclrRule`. `Rs2 == X0` stays allowed (`~x0` is architecturally all ones, so `andn` with a zero source computes exactly the original pair), and rd=x0 is excluded. `and` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `and` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary (the `xori` would clobber it), and `Rs2` must not be the temporary itself: the self-inverted form is the Zbs mask-materialization middle owned by `BclrRule`. `Rs2 == zero` stays allowed (`~zero` is architecturally all ones, so `andn` with a zero source computes exactly the original pair), and rd=zero is excluded. `and` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
 
 #### Evidence
 
@@ -1216,7 +1216,7 @@ orn Rd, Rs1, Rs2
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `or` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == X0` stays allowed, and rd=x0 is excluded. `or` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `or` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == zero` stays allowed, and rd=zero is excluded. `or` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
 
 #### Evidence
 
@@ -1235,7 +1235,7 @@ xnor Rd, Rs1, Rs2
 
 #### Constraints
 
-Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `xor` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == X0` stays allowed, and rd=x0 is excluded. `xor` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
+Zbb or Zbkb; gated on `hasZbb() || hasZbkb()`. The `xor` destination must be the `xori -1` temporary (same-destination chain), `Rs1` must not alias that temporary, and `Rs2` must not be the temporary itself (that form is owned by `BclrRule`). `Rs2 == zero` stays allowed, and rd=zero is excluded. `xor` is commutative, so either operand order matches. Distinct destinations need liveness and stay deferred.
 
 #### Evidence
 
@@ -1258,7 +1258,7 @@ bext Rd, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `Imm` is within the shift immediate field (a zero shift is a nop owned by `NopRule` only when it rewrites its own source; otherwise the copy is absorbed), and rd=x0 is excluded. `bext`/`bexti` extract exactly one bit: `(X(rs1) >> index) & 1`.
+Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `Imm` is within the shift immediate field (a zero shift is a nop owned by `NopRule` only when it rewrites its own source; otherwise the copy is absorbed), and rd=zero is excluded. `bext`/`bexti` extract exactly one bit: `(X(rs1) >> index) & 1`.
 
 #### Evidence
 
@@ -1269,7 +1269,7 @@ Zbs; gated on `hasZbs()`. The `andi` destination must be the shift temporary, `I
 ### `BclrRule` (`riscv:integer/bclr`)
 
 ```asm
-addi Tmp, X0, 1
+addi Tmp, zero, 1
 sll Tmp, Tmp, Rs2
 xori Tmp, Tmp, -1
 and Tmp, Rs1, Tmp
@@ -1280,7 +1280,7 @@ bclr Tmp, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. Same-destination chain, the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll`/`xori` clobber it), and Tmp must not be `x0`. Operation: `bclr = rs1 & ~(1 << rs2)`. The `xori -1` + `and` middle inside the pattern does not match the general `AndNotRule`: the self-inverted temporary (`Rs2 == Tmp`) is left to this rule. `and` is commutative, so either operand order matches.
+Zbs; gated on `hasZbs()`. Same-destination chain, the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll`/`xori` clobber it), and Tmp must not be `zero`. Operation: `bclr = rs1 & ~(1 << rs2)`. The `xori -1` + `and` middle inside the pattern does not match the general `AndNotRule`: the self-inverted temporary (`Rs2 == Tmp`) is left to this rule. `and` is commutative, so either operand order matches.
 
 #### Evidence
 
@@ -1290,7 +1290,7 @@ Zbs; gated on `hasZbs()`. Same-destination chain, the materialization may also b
 ### `BsetRule` (`riscv:integer/bset`)
 
 ```asm
-addi Tmp, X0, 1
+addi Tmp, zero, 1
 sll Tmp, Tmp, Rs2
 or Tmp, Rs1, Tmp
 # ->
@@ -1299,7 +1299,7 @@ bset Tmp, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `x0`. `or` is commutative, so either operand order matches. Operation: `bset = rs1 | (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `or` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
+Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `zero`. `or` is commutative, so either operand order matches. Operation: `bset = rs1 | (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `or` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
 
 #### Evidence
 
@@ -1309,7 +1309,7 @@ Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materia
 ### `BinvRule` (`riscv:integer/binv`)
 
 ```asm
-addi Tmp, X0, 1
+addi Tmp, zero, 1
 sll Tmp, Tmp, Rs2
 xor Tmp, Rs1, Tmp
 # ->
@@ -1318,7 +1318,7 @@ binv Tmp, Rs1, Rs2
 
 #### Constraints
 
-Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `x0`. `xor` is commutative, so either operand order matches. Operation: `binv = rs1 ^ (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `xor` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
+Zbs; gated on `hasZbs()`. Same-destination chain (`Tmp` throughout), the materialization may also be `c.li Tmp, 1`, `Rs1` and `Rs2` must not alias `Tmp` (the `addi`/`sll` clobber it), and Tmp must not be `zero`. `xor` is commutative, so either operand order matches. Operation: `binv = rs1 ^ (1 << rs2)`. The standalone 2-instruction `li 1; sll` prefix is not reported: when the consuming `xor` follows, this rule subsumes it, and a window-2 rule has no lookahead to suppress itself.
 
 #### Evidence
 
@@ -1384,12 +1384,12 @@ Base ISA; the `c.addi` arms need Zca. Both immediates must be nonzero (a zero-im
 xori Rd, Rs, -1
 addi Rd, Rd, 1
 # ->
-sub Rd, X0, Rs
+sub Rd, zero, Rs
 ```
 
 #### Constraints
 
-Base ISA. Same destination; `xori Rd, Rs, -1` is `not` and the pair is two's-complement `~x + 1 = -x`, i.e. the `neg` idiom `sub Rd, X0, Rs`. rd=x0 stays excluded.
+Base ISA. Same destination; `xori Rd, Rs, -1` is `not` and the pair is two's-complement `~x + 1 = -x`, i.e. the `neg` idiom `sub Rd, zero, Rs`. rd=zero stays excluded.
 
 #### Evidence
 
@@ -1425,7 +1425,7 @@ same load Rd, Imm0+Imm1(Rs1)
 
 #### Constraints
 
-Base ISA; `ld`/`lwu` are RV64. The load destination must equal the address temporary, proving the temporary is overwritten, the combined offset must fit the signed 12-bit load offset, and rd=x0 stays excluded. `flw`/`fld` are excluded: they write an FP register, so the address temporary is never overwritten and the rewrite needs a dead-temporary proof. Distinct-destination forms stay deferred (liveness).
+Base ISA; `ld`/`lwu` are RV64. The load destination must equal the address temporary, proving the temporary is overwritten, the combined offset must fit the signed 12-bit load offset, and rd=zero stays excluded. `flw`/`fld` are excluded: they write an FP register, so the address temporary is never overwritten and the rewrite needs a dead-temporary proof. Distinct-destination forms stay deferred (liveness).
 
 #### Evidence
 
@@ -1442,7 +1442,7 @@ andi Rd, Rd, 255
 
 #### Constraints
 
-Base ISA. The `andi` destination must be the load destination, and rd=x0 stays excluded. `LBU` already zero-extends the byte, and `andi 255` is the `zext.b` idiom. The Zbb/Zba extension arms live in `ZextHElimRule` and `ZextWElimRule`.
+Base ISA. The `andi` destination must be the load destination, and rd=zero stays excluded. `LBU` already zero-extends the byte, and `andi 255` is the `zext.b` idiom. The Zbb/Zba extension arms live in `ZextHElimRule` and `ZextWElimRule`.
 
 #### Evidence
 
@@ -1455,7 +1455,7 @@ beq/bne/blt/bge/bltu/bgeu Rs1, Rs2, .+4
 # or
 c.beqz/c.bnez Rs, .+2
 # or
-jal X0, .+4 (j)
+jal zero, .+4 (j)
 # or
 c.j .+2
 # ->
@@ -1464,7 +1464,7 @@ c.j .+2
 
 #### Constraints
 
-Direct, non-linking branches only. `JAL` with `rd = x0` and `C_J` are included; `JAL` with a link register, `C_JAL`, `JALR` and other indirect forms are excluded. The target must equal `Address + Size`, resolved with `Ctx.MIA.evaluateBranch`; taken and fallthrough paths then coincide.
+Direct, non-linking branches only. `JAL` with `rd = zero` and `C_J` are included; `JAL` with a link register, `C_JAL`, `JALR` and other indirect forms are excluded. The target must equal `Address + Size`, resolved with `Ctx.MIA.evaluateBranch`; taken and fallthrough paths then coincide.
 
 #### Evidence
 
@@ -1479,7 +1479,7 @@ bge Rs, Rs, Offs
 # or
 bgeu Rs, Rs, Offs
 # ->
-jal X0, Offs (j)
+jal zero, Offs (j)
 
 bne Rs, Rs, Offs
 # or
@@ -1492,7 +1492,7 @@ bltu Rs, Rs, Offs
 
 #### Constraints
 
-Base ISA. Comparing a register with itself has a constant truth value; `beqz X0`/`bnez X0` assemble to the `beq`/`bne` forms and are covered. A target equal to `Address + Size` is left to `BranchToNextRule` so the two rules never double-report. The `jal` replacement range (±1 MiB) always covers the source branch ranges (B ±4 KiB, C ±256 B). Compressed branches cannot be degenerate: `c.beqz`/`c.bnez` read x8--x15, never x0.
+Base ISA. Comparing a register with itself has a constant truth value; `beqz zero`/`bnez zero` assemble to the `beq`/`bne` forms and are covered. A target equal to `Address + Size` is left to `BranchToNextRule` so the two rules never double-report. The `jal` replacement range (±1 MiB) always covers the source branch ranges (B ±4 KiB, C ±256 B). Compressed branches cannot be degenerate: `c.beqz`/`c.bnez` read x8--x15, never zero.
 
 #### Evidence
 
@@ -1510,7 +1510,7 @@ jal T, Target
 
 #### Constraints
 
-Base ISA. The call form is provable from the shared destination (`jal` writes the same return address that `jalr` writes): the `jalr` base must be the `auipc` destination, the `jalr` destination must be the same register, and T must not be `x0` (an `auipc x0` writes nothing, so the address would not be PC-relative). The rule computes `Target = (PC + sign_extend(Hi20) << 12 + sign_extend(Lo12)) & ~1` from the encoded immediates (`jalr` clears bit 0) and requires it inside the `JAL` range (±1 MiB, inherently 2-byte aligned). The tail form (`jalr X0, T, Lo12`) stays deferred until a bounded dead-temporary proof exists. Relocations are never interpreted; the rule works on final bytes. When the call target lies inside the scanned region, the engine's call-target boundary splits the window, so such in-region targets are not reported.
+Base ISA. The call form is provable from the shared destination (`jal` writes the same return address that `jalr` writes): the `jalr` base must be the `auipc` destination, the `jalr` destination must be the same register, and T must not be `zero` (an `auipc zero` writes nothing, so the address would not be PC-relative). The rule computes `Target = (PC + sign_extend(Hi20) << 12 + sign_extend(Lo12)) & ~1` from the encoded immediates (`jalr` clears bit 0) and requires it inside the `JAL` range (±1 MiB, inherently 2-byte aligned). The tail form (`jalr zero, T, Lo12`) stays deferred until a bounded dead-temporary proof exists. Relocations are never interpreted; the rule works on final bytes. When the call target lies inside the scanned region, the engine's call-target boundary splits the window, so such in-region targets are not reported.
 
 #### Evidence
 
