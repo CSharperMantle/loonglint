@@ -28,6 +28,7 @@
 #include "loonglint/Rules/LoongArch/ShiftMaskRule.hpp"
 #include "loonglint/Rules/LoongArch/UnsignedLoadPickRule.hpp"
 #include "loonglint/Rules/LoongArch/ZeroCompareBranchRule.hpp"
+#include "loonglint/Rules/LoongArch/ZeroConsumerRule.hpp"
 #include "loonglint/Rules/LoongArch/ZeroExtendRule.hpp"
 
 #include "llvm/BinaryFormat/ELF.h"
@@ -98,6 +99,8 @@ SmallVector<std::unique_ptr<Rule>, 0> LoongArchSpec::createRules() const {
     Rules.emplace_back(std::make_unique<LoongArch::LoadZeroExtendRule>(*this));
     Rules.emplace_back(std::make_unique<LoongArch::UnsignedLoadPickRule>(*this));
     Rules.emplace_back(std::make_unique<LoongArch::ZeroCompareBranchRule>());
+    Rules.emplace_back(std::make_unique<LoongArch::ForeignZeroingIdiomRule>());
+    Rules.emplace_back(std::make_unique<LoongArch::ZeroConsumerRule>());
     return Rules;
 }
 

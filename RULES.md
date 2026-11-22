@@ -896,6 +896,28 @@ LA32/LA64; the `.D` forms, `addu16i.d`, `lu52i.d`, and `alsl.wu` decode on LA64 
 * <https://github.com/loongson/la-asm-manual>
 * <https://sourceware.org/cgit/binutils-gdb/tree/gas/config/tc-loongarch.c#n1331> (`assember_macro_helper`)
 
+### `ZeroConsumerRule` (`loongarch:integer/zero-consumer`)
+
+```asm
+<zero-materializing producer>
+<instruction reading Rd through a source operand>
+# ->
+<same producer>
+# <instruction whose Rd source operands read '$zero'>
+```
+
+#### Constraints
+
+LA32/LA64.
+
+* The producer may be any instruction whose operands prove a zero result, including the canonical `move`/`ori` materializations.
+* The consumer is any decoded instruction that reads `Rd` through at least one source operand; destination operands are never rewritten.
+* The atomic RMW families (`amswap`/`amadd`/`amand`/`amor`/`amxor`/`ammax`/`ammin` with their `_db` and `.b`/`.h`/`.w`/`.d`/`.wu`/`.du` variants, and `amcas`) whose destination is `Rd` are blacklisted: `rd == rj` raises an invalid-instruction exception and `rd == rk` returns an undefined result.
+
+#### Evidence
+
+* <https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html>
+
 ## RISC-V rules
 
 ### `NopRule` (`riscv:integer/nop`)

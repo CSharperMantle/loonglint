@@ -70,6 +70,7 @@ set(LOONGLINT_LOONGARCH_SOURCES
   src/Rules/LoongArch/BranchToNextRule.cpp
   src/Rules/LoongArch/ByteReverseRule.cpp
   src/Rules/LoongArch/DegenerateBranchRule.cpp
+  src/Rules/LoongArch/ForeignZeroingIdiomRule.cpp
   src/Rules/LoongArch/IndexedLoadRule.cpp
   src/Rules/LoongArch/LoadExtendRule.cpp
   src/Rules/LoongArch/LoadZeroExtendRule.cpp
@@ -86,6 +87,7 @@ set(LOONGLINT_LOONGARCH_SOURCES
   src/Rules/LoongArch/ShiftMaskRule.cpp
   src/Rules/LoongArch/UnsignedLoadPickRule.cpp
   src/Rules/LoongArch/ZeroCompareBranchRule.cpp
+  src/Rules/LoongArch/ZeroConsumerRule.cpp
   src/Rules/LoongArch/ZeroExtendRule.cpp
 )
 set(LOONGLINT_RISCV_SOURCES
