@@ -3,6 +3,7 @@
 #include "loonglint/ArchSpec.hpp"
 #include "loonglint/DisassemblerTarget.hpp"
 #include "loonglint/FunctionSymbols.hpp"
+#include "loonglint/InstDiff.hpp"
 #include "loonglint/RuleFilter.hpp"
 #include "loonglint/RuleManager.hpp"
 #include "loonglint/ScannedRegion.hpp"
@@ -21,6 +22,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -93,7 +95,7 @@ cl::opt<bool> NoFunctionLabels(
 
 using namespace loonglint;
 
-enum class FindingLineKind { Removed, Added };
+enum class FindingLineKind { Kept, Removed, Added };
 
 class StatsReport {
   public:
@@ -208,24 +210,57 @@ static bool validateOptions() {
     return true;
 }
 
-static void printInstruction(DisassemblerTarget &DT, FindingLineKind Kind, uint64_t Address,
-                             const MCInst &Inst) {
+static raw_ostream::Colors lineColor(FindingLineKind Kind) {
     switch (Kind) {
-    case FindingLineKind::Removed: {
-        WithColor LineColor(outs(), raw_ostream::RED);
-        DT.setUseColor(LineColor.colorsEnabled());
-        LineColor << "\t- " << format_hex(Address, 10);
-        DT.printInst(Inst, Address, LineColor);
+    case FindingLineKind::Kept:
+        return raw_ostream::SAVEDCOLOR;
+    case FindingLineKind::Removed:
+        return raw_ostream::RED;
+    case FindingLineKind::Added:
+        return raw_ostream::GREEN;
+    }
+    llvm_unreachable("unhandled finding line kind");
+}
+
+static void printDiffLine(DisassemblerTarget &DT, FindingLineKind Kind, bool SideBySideAddress,
+                          uint64_t OldAddress, uint64_t NewAddress, const MCInst &Inst) {
+    WithColor LineColor(outs(), lineColor(Kind));
+    DT.setUseColor(LineColor.colorsEnabled());
+    LineColor << '\t';
+    switch (Kind) {
+    case FindingLineKind::Kept:
+        LineColor << "  ";
+        break;
+    case FindingLineKind::Removed:
+        LineColor << "- ";
+        break;
+    case FindingLineKind::Added:
+        LineColor << "+ ";
         break;
     }
-    case FindingLineKind::Added: {
-        WithColor LineColor(outs(), raw_ostream::GREEN);
-        DT.setUseColor(LineColor.colorsEnabled());
-        LineColor << "\t+ " << format_hex(Address, 10);
-        DT.printInst(Inst, Address, LineColor);
-        break;
+    if (!SideBySideAddress) {
+        switch (Kind) {
+        case FindingLineKind::Removed:
+            LineColor << format_hex(OldAddress, 10);
+            break;
+        case FindingLineKind::Added:
+            LineColor << format_hex(NewAddress, 10);
+            break;
+        default:
+            llvm_unreachable("Kind==Kept cannot be used with SideBySideAddress==false");
+        }
+    } else {
+        if (Kind != FindingLineKind::Added)
+            LineColor << format_hex(OldAddress, 10);
+        else
+            LineColor << "          ";
+        LineColor << '\t';
+        if (Kind != FindingLineKind::Removed)
+            LineColor << format_hex(NewAddress, 10);
+        else
+            LineColor << "          ";
     }
-    }
+    DT.printInst(Inst, Kind == FindingLineKind::Removed ? OldAddress : NewAddress, LineColor);
     outs() << '\n';
 }
 
@@ -262,12 +297,50 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
     WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.getID() << ']';
     outs() << '\n';
 
+    SmallVector<MCInst> OldInsts;
+    OldInsts.reserve(TheFinding.Instructions.size());
     for (const auto &I : TheFinding.Instructions)
-        printInstruction(DT, FindingLineKind::Removed, I.Address, I.Inst);
-    uint64_t AddedAddress = Address;
-    for (const MCInst &MI : TheFinding.Match.Replacement) {
-        printInstruction(DT, FindingLineKind::Added, AddedAddress, MI);
-        AddedAddress += DT.getInstSize(MI);
+        OldInsts.emplace_back(I.Inst);
+
+    const auto Ops = computeInstDiff(OldInsts, TheFinding.Match.Replacement);
+    const bool HasKeptRegion =
+        any_of(Ops, [](const DiffOp &Op) { return Op.K == DiffOp::Kind::Keep; });
+
+    if (!HasKeptRegion) {
+        for (const auto &I : TheFinding.Instructions)
+            printDiffLine(DT, FindingLineKind::Removed, false, I.Address, 0, I.Inst);
+        uint64_t AddedAddress = Address;
+        for (const MCInst &MI : TheFinding.Match.Replacement) {
+            printDiffLine(DT, FindingLineKind::Added, false, 0, AddedAddress, MI);
+            AddedAddress += DT.getInstSize(MI);
+        }
+    } else {
+        uint64_t OldCursor = Address;
+        uint64_t NewCursor = Address;
+        for (const DiffOp &Op : Ops) {
+            switch (Op.K) {
+            case DiffOp::Kind::Keep: {
+                const MCInst &Inst = OldInsts[Op.OldIdx];
+                printDiffLine(DT, FindingLineKind::Kept, true, OldCursor, NewCursor, Inst);
+                const uint64_t Size = DT.getInstSize(Inst);
+                OldCursor += Size;
+                NewCursor += Size;
+                break;
+            }
+            case DiffOp::Kind::Remove: {
+                const MCInst &Inst = OldInsts[Op.OldIdx];
+                printDiffLine(DT, FindingLineKind::Removed, true, OldCursor, NewCursor, Inst);
+                OldCursor += DT.getInstSize(Inst);
+                break;
+            }
+            case DiffOp::Kind::Insert: {
+                const MCInst &Inst = TheFinding.Match.Replacement[Op.NewIdx];
+                printDiffLine(DT, FindingLineKind::Added, true, OldCursor, NewCursor, Inst);
+                NewCursor += DT.getInstSize(Inst);
+                break;
+            }
+            }
+        }
     }
 
     outs() << '\n';
