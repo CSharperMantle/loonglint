@@ -10,6 +10,7 @@ set(LLVM_LINK_COMPONENTS
 
 add_unittest(LoongLintUnitTests LoongLintCoreTests
   DISABLE_PCH_REUSE
+  InstDiffTest.cpp
   MCInstMatcherTest.cpp
   RuleFilterTest.cpp
 )

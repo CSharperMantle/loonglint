@@ -52,6 +52,7 @@ endif()
 set(LOONGLINT_ENGINE_SOURCES
   src/DisassemblerTarget.cpp
   src/FunctionSymbols.cpp
+  src/InstDiff.cpp
   src/RuleFilter.cpp
   src/RuleManager.cpp
   src/ScannedRegion.cpp
