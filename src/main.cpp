@@ -30,6 +30,7 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <memory>
@@ -223,7 +224,8 @@ static raw_ostream::Colors lineColor(FindingLineKind Kind) {
 }
 
 static void printDiffLine(DisassemblerTarget &DT, FindingLineKind Kind, bool SideBySideAddress,
-                          uint64_t OldAddress, uint64_t NewAddress, const MCInst &Inst) {
+                          unsigned AddressWidth, uint64_t OldAddress, uint64_t NewAddress,
+                          const MCInst &Inst) {
     WithColor LineColor(outs(), lineColor(Kind));
     DT.setUseColor(LineColor.colorsEnabled());
     LineColor << '\t';
@@ -241,24 +243,24 @@ static void printDiffLine(DisassemblerTarget &DT, FindingLineKind Kind, bool Sid
     if (!SideBySideAddress) {
         switch (Kind) {
         case FindingLineKind::Removed:
-            LineColor << format_hex(OldAddress, 10);
+            LineColor << format_hex(OldAddress, AddressWidth);
             break;
         case FindingLineKind::Added:
-            LineColor << format_hex(NewAddress, 10);
+            LineColor << format_hex(NewAddress, AddressWidth);
             break;
         default:
             llvm_unreachable("Kind==Kept cannot be used with SideBySideAddress==false");
         }
     } else {
         if (Kind != FindingLineKind::Added)
-            LineColor << format_hex(OldAddress, 10);
+            LineColor << format_hex(OldAddress, AddressWidth);
         else
-            LineColor << "          ";
+            LineColor << indent(AddressWidth);
         LineColor << '\t';
         if (Kind != FindingLineKind::Removed)
-            LineColor << format_hex(NewAddress, 10);
+            LineColor << format_hex(NewAddress, AddressWidth);
         else
-            LineColor << "          ";
+            LineColor << indent(AddressWidth);
     }
     DT.printInst(Inst, Kind == FindingLineKind::Removed ? OldAddress : NewAddress, LineColor);
     outs() << '\n';
@@ -306,12 +308,20 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
     const bool HasKeptRegion =
         any_of(Ops, [](const DiffOp &Op) { return Op.K == DiffOp::Kind::Keep; });
 
+    const uint64_t MaxAddress = std::max(
+        accumulate(
+            TheFinding.Instructions, Address,
+            [](uint64_t Acc, const loonglint::Instruction &I) { return std::max(Acc, I.Address); }),
+        accumulate(TheFinding.Match.Replacement, Address,
+                   [&](uint64_t Acc, const MCInst &MI) { return Acc + DT.getInstSize(MI); }));
+    const unsigned AddressWidth = MaxAddress > 0xffffffffULL ? 18U : 10U;
+
     if (!HasKeptRegion) {
         for (const auto &I : TheFinding.Instructions)
-            printDiffLine(DT, FindingLineKind::Removed, false, I.Address, 0, I.Inst);
+            printDiffLine(DT, FindingLineKind::Removed, false, AddressWidth, I.Address, 0, I.Inst);
         uint64_t AddedAddress = Address;
         for (const MCInst &MI : TheFinding.Match.Replacement) {
-            printDiffLine(DT, FindingLineKind::Added, false, 0, AddedAddress, MI);
+            printDiffLine(DT, FindingLineKind::Added, false, AddressWidth, 0, AddedAddress, MI);
             AddedAddress += DT.getInstSize(MI);
         }
     } else {
@@ -321,7 +331,8 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
             switch (Op.K) {
             case DiffOp::Kind::Keep: {
                 const MCInst &Inst = OldInsts[Op.OldIdx];
-                printDiffLine(DT, FindingLineKind::Kept, true, OldCursor, NewCursor, Inst);
+                printDiffLine(DT, FindingLineKind::Kept, true, AddressWidth, OldCursor, NewCursor,
+                              Inst);
                 const uint64_t Size = DT.getInstSize(Inst);
                 OldCursor += Size;
                 NewCursor += Size;
@@ -329,13 +340,15 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
             }
             case DiffOp::Kind::Remove: {
                 const MCInst &Inst = OldInsts[Op.OldIdx];
-                printDiffLine(DT, FindingLineKind::Removed, true, OldCursor, NewCursor, Inst);
+                printDiffLine(DT, FindingLineKind::Removed, true, AddressWidth, OldCursor,
+                              NewCursor, Inst);
                 OldCursor += DT.getInstSize(Inst);
                 break;
             }
             case DiffOp::Kind::Insert: {
                 const MCInst &Inst = TheFinding.Match.Replacement[Op.NewIdx];
-                printDiffLine(DT, FindingLineKind::Added, true, OldCursor, NewCursor, Inst);
+                printDiffLine(DT, FindingLineKind::Added, true, AddressWidth, OldCursor, NewCursor,
+                              Inst);
                 NewCursor += DT.getInstSize(Inst);
                 break;
             }
