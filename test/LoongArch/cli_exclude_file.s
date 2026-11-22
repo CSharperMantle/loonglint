@@ -15,7 +15,7 @@
 # FILE-UNION: 0 finding(s)
 
 # RUN: not loonglint --input-format=raw --arch=loongarch64 --exclude-file %t.missing %t.bin 2>&1 | FileCheck %s --check-prefix=FILE-MISSING
-# FILE-MISSING: loonglint: error: cannot read exclude file
+# FILE-MISSING: loonglint: error: cannot read file
 # FILE-MISSING-NOT: finding
 
 .text

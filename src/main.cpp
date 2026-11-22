@@ -62,16 +62,26 @@ cl::opt<std::string> Arch("arch",
                           cl::value_desc("arch"), cl::cat(LoongLintCategory));
 cl::opt<uint64_t> BaseAddress("base-address", cl::desc("Base address for raw input"), cl::init(0),
                               cl::value_desc("integer"), cl::cat(LoongLintCategory));
-cl::list<std::string> Exclude(
-    "exclude",
-    cl::desc("Exclude rules whose ID matches this regular expression (POSIX ERE, repeatable)"),
-    cl::value_desc("regex"), cl::cat(LoongLintCategory));
+cl::list<std::string> Exclude("exclude",
+                              cl::desc("Exclude rules whose ID matches this POSIX ERE (repeatable, "
+                                       "can't be used with --filter{,-file})"),
+                              cl::value_desc("regex"), cl::cat(LoongLintCategory));
 cl::alias ExcludeAlias("E", cl::desc("Alias for --exclude"), cl::aliasopt(Exclude), cl::NotHidden);
-cl::list<std::string> ExcludeFile(
-    "exclude-file",
-    cl::desc("Read one exclusion regular expression per line from this file (repeatable); blank "
-             "lines and '#' comments are ignored"),
-    cl::value_desc("file"), cl::cat(LoongLintCategory));
+cl::list<std::string>
+    ExcludeFile("exclude-file",
+                cl::desc("Read one exclusion ERE per line from this file (repeatable); blank "
+                         "lines and '#' comments are ignored"),
+                cl::value_desc("file"), cl::cat(LoongLintCategory));
+cl::list<std::string> Filter("filter",
+                             cl::desc("Only include rules whose ID matches this POSIX ERE "
+                                      "(repeatable, can't be used with --exclude{,-file})"),
+                             cl::value_desc("regex"), cl::cat(LoongLintCategory));
+cl::alias FilterAlias("F", cl::desc("Alias for --filter"), cl::aliasopt(Filter), cl::NotHidden);
+cl::list<std::string>
+    FilterFile("filter-file",
+               cl::desc("Read one filter ERE per line from this file (repeatable); blank "
+                        "lines and '#' comments are ignored"),
+               cl::value_desc("file"), cl::cat(LoongLintCategory));
 cl::opt<bool> NoFunctionLabels(
     "no-function-labels",
     cl::desc("Disable 'function+offset' locator in printout and fall back to 'section:address'"),
@@ -186,6 +196,14 @@ static bool validateOptions() {
             printError("--base-address is valid only with --input-format=raw");
             return false;
         }
+    }
+    const bool Excluding =
+        opts::Exclude.getNumOccurrences() != 0 || opts::ExcludeFile.getNumOccurrences() != 0;
+    const bool Filtering =
+        opts::Filter.getNumOccurrences() != 0 || opts::FilterFile.getNumOccurrences() != 0;
+    if (Excluding && Filtering) {
+        printError("--exclude{,-file} and --filter{,-file} are mutually exclusive");
+        return false;
     }
     return true;
 }
@@ -402,18 +420,19 @@ static Expected<std::unique_ptr<MemoryBuffer>> readInput() {
 }
 
 static Expected<RuleFilter> buildRuleFilter() {
+    const bool IsExclusion = opts::Filter.empty() && opts::FilterFile.empty();
+
     SmallVector<std::unique_ptr<MemoryBuffer>> FileBuffers;
-    // Views into |opts::Exclude| and elements from |FileBuffers|.
+    // Views into |opts::Exclude| or |opts::Filter| and elements from |FileBuffers|.
     SmallVector<StringRef> Patterns;
 
-    for (const auto &Pattern : opts::Exclude)
+    for (const auto &Pattern : IsExclusion ? opts::Exclude : opts::Filter)
         Patterns.emplace_back(Pattern);
 
-    for (const auto &Path : opts::ExcludeFile) {
+    for (const auto &Path : IsExclusion ? opts::ExcludeFile : opts::FilterFile) {
         ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer = MemoryBuffer::getFileAsStream(Path);
         if (!Buffer)
-            return createStringError(Buffer.getError(), "cannot read exclude file '%s'",
-                                     Path.c_str());
+            return createStringError(Buffer.getError(), "cannot read file '%s'", Path.c_str());
         StringRef Contents = (*Buffer)->getBuffer();
         // Ensure that |Buffer| lives long enough by remembering it.
         FileBuffers.emplace_back(std::move(*Buffer));
@@ -430,7 +449,7 @@ static Expected<RuleFilter> buildRuleFilter() {
         }
     }
 
-    return RuleFilter::create(Patterns);
+    return RuleFilter::create(IsExclusion, Patterns);
 }
 
 static Expected<StatsReport> lintInput(const RuleFilter &Filter) {

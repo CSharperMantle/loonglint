@@ -12,13 +12,14 @@ using namespace llvm;
 
 namespace loonglint {
 
-Expected<RuleFilter> RuleFilter::create(ArrayRef<StringRef> ExcludePatterns) {
+Expected<RuleFilter> RuleFilter::create(bool IsExclusion, ArrayRef<StringRef> Patterns) {
     RuleFilter RF;
-    RF.Patterns.reserve(ExcludePatterns.size());
+    RF.IsExclusion = IsExclusion;
+    RF.Patterns.reserve(Patterns.size());
 
-    for (const StringRef Pattern : ExcludePatterns) {
+    for (const StringRef Pattern : Patterns) {
         if (Pattern.empty())
-            return createStringError("empty exclusion pattern");
+            return createStringError("empty pattern");
 
         Regex R(Pattern);
         std::string ErrorMessage;
@@ -32,7 +33,8 @@ Expected<RuleFilter> RuleFilter::create(ArrayRef<StringRef> ExcludePatterns) {
 }
 
 bool RuleFilter::excludes(StringRef RuleID) const {
-    return any_of(Patterns, [&](const Regex &R) { return R.match(RuleID); });
+    const bool Hit = any_of(Patterns, [&](const Regex &R) { return R.match(RuleID); });
+    return IsExclusion ? Hit : !Hit;
 }
 
 } // namespace loonglint

@@ -12,7 +12,7 @@
 # SECOND-INVALID: loonglint: error: invalid regular expression '[':
 
 # RUN: not loonglint --input-format=raw --arch=loongarch64 -E '' %t.bin 2>&1 | FileCheck %s --check-prefix=EMPTY-REGEX
-# EMPTY-REGEX: loonglint: error: empty exclusion pattern
+# EMPTY-REGEX: loonglint: error: empty pattern
 # EMPTY-REGEX-NOT: finding
 
 .text

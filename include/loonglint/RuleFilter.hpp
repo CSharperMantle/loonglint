@@ -13,13 +13,15 @@ namespace loonglint {
 
 class RuleFilter final {
   public:
-    static llvm::Expected<RuleFilter> create(llvm::ArrayRef<llvm::StringRef> ExcludePatterns);
+    static llvm::Expected<RuleFilter> create(bool IsExclusion,
+                                             llvm::ArrayRef<llvm::StringRef> Patterns);
 
     bool excludes(llvm::StringRef RuleID) const;
 
   private:
     RuleFilter() = default;
 
+    bool IsExclusion = true;
     llvm::SmallVector<llvm::Regex, 0> Patterns;
 };
 
