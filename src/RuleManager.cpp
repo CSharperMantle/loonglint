@@ -4,6 +4,7 @@
 
 #include "loonglint/ArchSpec.hpp"
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Debug.h"
 
 #include <algorithm>
@@ -26,10 +27,9 @@ RuleManager::RuleManager(const DisassemblerTarget &DT, const RuleFilter &Filter)
 }
 
 unsigned RuleManager::getMaxInstCount() const {
-    unsigned Result = 0;
-    for (const auto &R : getRules())
-        Result = std::max(Result, R.getInstructionCount());
-    return Result;
+    return accumulate(getRules(), 0U, [](unsigned Acc, const Rule &R) {
+        return std::max(Acc, R.getInstructionCount());
+    });
 }
 
 uint64_t RuleManager::runWindow(ArrayRef<Instruction> Window, FindingHandler HandleFinding) const {

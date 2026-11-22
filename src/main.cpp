@@ -13,6 +13,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/SmallVectorExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -100,9 +101,8 @@ enum class FindingLineKind { Kept, Removed, Added };
 
 class StatsReport {
   public:
-    explicit StatsReport(const RuleManager &Manager) {
-        for (const auto &R : Manager.getRules())
-            RuleOrder.emplace_back(R.getID());
+    explicit StatsReport(const RuleManager &Manager)
+        : RuleOrder(map_to_vector<0>(Manager.getRules(), [](const Rule &R) { return R.getID(); })) {
     }
 
     void addRuleHit(const Rule &MatchedRule) {
@@ -299,10 +299,8 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
     WithColor(outs(), HighlightColor::Tag) << '[' << TheFinding.MatchedRule.getID() << ']';
     outs() << '\n';
 
-    SmallVector<MCInst> OldInsts;
-    OldInsts.reserve(TheFinding.Instructions.size());
-    for (const auto &I : TheFinding.Instructions)
-        OldInsts.emplace_back(I.Inst);
+    const SmallVector<MCInst> OldInsts = map_to_vector(
+        TheFinding.Instructions, [](const loonglint::Instruction &I) { return I.Inst; });
 
     const auto Ops = computeInstDiff(OldInsts, TheFinding.Match.Replacement);
     const bool HasKeptRegion =
@@ -461,10 +459,13 @@ static Expected<StatsReport> lintELF(MemoryBufferRef Buffer, const RuleFilter &F
     RuleManager Manager(*DT, Filter);
 
     // [start, end)
-    SmallVector<std::pair<uint64_t, uint64_t>> TextRanges;
-    for (const auto &Section : Object->get()->sections())
-        if (Section.isText() && Section.getSize() != 0)
-            TextRanges.emplace_back(Section.getAddress(), Section.getAddress() + Section.getSize());
+    const SmallVector<std::pair<uint64_t, uint64_t>> TextRanges = map_to_vector(
+        make_filter_range(
+            Object->get()->sections(),
+            [](const auto &Section) { return Section.isText() && Section.getSize() != 0; }),
+        [](const auto &Section) {
+            return std::make_pair(Section.getAddress(), Section.getAddress() + Section.getSize());
+        });
     const FunctionSymbols FS = FunctionSymbols::create(*TheELF, TextRanges);
 
     StatsReport SR(Manager);
@@ -513,10 +514,8 @@ static Expected<RuleFilter> buildRuleFilter() {
 
     SmallVector<std::unique_ptr<MemoryBuffer>> FileBuffers;
     // Views into |opts::Exclude| or |opts::Filter| and elements from |FileBuffers|.
-    SmallVector<StringRef> Patterns;
-
-    for (const auto &Pattern : IsExclusion ? opts::Exclude : opts::Filter)
-        Patterns.emplace_back(Pattern);
+    SmallVector<StringRef> Patterns =
+        to_vector_of<StringRef>(IsExclusion ? opts::Exclude : opts::Filter);
 
     for (const auto &Path : IsExclusion ? opts::ExcludeFile : opts::FilterFile) {
         ErrorOr<std::unique_ptr<MemoryBuffer>> Buffer = MemoryBuffer::getFileAsStream(Path);

@@ -39,6 +39,7 @@
 #include "loonglint/Rules/RISCV/ZextWFoldRule.hpp"
 #include "loonglint/Rules/RISCV/ZextWFormRule.hpp"
 
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Support/Error.h"
@@ -85,11 +86,9 @@ StringRef RISCVSpec::getName() const {
 bool RISCVSpec::hasExtension(StringRef Ext) const {
     SmallVector<StringRef, 32> Features;
     StringRef(FeaturesString).split(Features, ',');
-    for (StringRef Feature : Features)
-        if (Feature.size() == Ext.size() + 1 && Feature.front() == '+' &&
-            Feature.drop_front() == Ext)
-            return true;
-    return false;
+    return any_of(Features, [Ext](StringRef Feature) {
+        return Feature.starts_with('+') && Feature.drop_front() == Ext;
+    });
 }
 
 unsigned RISCVSpec::getCellSize() const {
