@@ -38,6 +38,7 @@ class DisassemblerTarget {
     static llvm::Expected<DisassemblerTarget> create(const ArchSpec &AS);
 
     unsigned getCellSize() const;
+    unsigned getInstSize(const llvm::MCInst &MI) const;
 
     void setABIVersion(unsigned Version);
     void setUseColor(bool UseColor);

@@ -86,6 +86,10 @@ unsigned DisassemblerTarget::getCellSize() const {
     return AS.getCellSize();
 }
 
+unsigned DisassemblerTarget::getInstSize(const MCInst &MI) const {
+    return MII->get(MI.getOpcode()).getSize();
+}
+
 void DisassemblerTarget::setABIVersion(unsigned Version) {
     Disasm->setABIVersion(Version);
 }
