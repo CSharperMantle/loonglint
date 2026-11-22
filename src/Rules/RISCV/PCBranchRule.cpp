@@ -62,7 +62,7 @@ std::optional<Rule::Match> PCBranchRule::match(ArrayRef<Instruction> Instruction
     const int64_t Hi = SignExtend64<32>(static_cast<uint64_t>(HiImm.get()) << 12);
     const int64_t Lo = LoImm.get();
     // JALR clears bit 0 of the computed address.
-    const uint64_t Target = (PC + static_cast<uint64_t>(Hi + Lo)) & ~uint64_t(1);
+    const uint64_t Target = (PC + static_cast<uint64_t>(Hi + Lo)) & ~UINT64_C(1);
     const int64_t Offset = static_cast<int64_t>(Target - PC);
     if (!isInt<21>(Offset))
         return std::nullopt;

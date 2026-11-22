@@ -312,7 +312,7 @@ static void printFinding(DisassemblerTarget &DT, StringRef RegionName, const Fun
             [](uint64_t Acc, const loonglint::Instruction &I) { return std::max(Acc, I.Address); }),
         accumulate(TheFinding.Match.Replacement, Address,
                    [&](uint64_t Acc, const MCInst &MI) { return Acc + DT.getInstSize(MI); }));
-    const unsigned AddressWidth = MaxAddress > 0xffffffffULL ? 18U : 10U;
+    const unsigned AddressWidth = MaxAddress > UINT64_C(0xffffffff) ? 18U : 10U;
 
     if (!HasKeptRegion) {
         for (const auto &I : TheFinding.Instructions)

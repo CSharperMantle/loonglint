@@ -54,7 +54,7 @@ std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructio
         if (N < 1 || RdReg.get() == RISCV::X0)
             break;
 
-        const int64_t Mask = static_cast<int64_t>((uint64_t(1) << (XLEN - N)) - 1);
+        const int64_t Mask = static_cast<int64_t>((UINT64_C(1) << (XLEN - N)) - 1);
         if (!isInt<12>(Mask))
             break;
 
@@ -77,7 +77,7 @@ std::optional<Rule::Match> ShiftMaskRule::match(ArrayRef<Instruction> Instructio
         if (N < 1 || RdReg.get() == RISCV::X0)
             break;
 
-        const int64_t Mask = -(int64_t(1) << N);
+        const int64_t Mask = -(INT64_C(1) << N);
         if (!isInt<12>(Mask))
             break;
 

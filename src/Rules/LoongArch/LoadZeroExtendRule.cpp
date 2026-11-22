@@ -42,15 +42,15 @@ std::optional<Rule::Match> LoadZeroExtendRule::match(ArrayRef<Instruction> Instr
     const MCInst &S = Instructions[1].Inst;
 
     for (const auto &[LdOp, PickOp, UnsOp, Msb, Needs64] : {
-             std::make_tuple(LoongArch::LD_B, LoongArch::BSTRPICK_D, LoongArch::LD_BU, int64_t(7),
+             std::make_tuple(LoongArch::LD_B, LoongArch::BSTRPICK_D, LoongArch::LD_BU, INT64_C(7),
                              true),
-             std::make_tuple(LoongArch::LD_H, LoongArch::BSTRPICK_D, LoongArch::LD_HU, int64_t(15),
+             std::make_tuple(LoongArch::LD_H, LoongArch::BSTRPICK_D, LoongArch::LD_HU, INT64_C(15),
                              true),
-             std::make_tuple(LoongArch::LD_W, LoongArch::BSTRPICK_D, LoongArch::LD_WU, int64_t(31),
+             std::make_tuple(LoongArch::LD_W, LoongArch::BSTRPICK_D, LoongArch::LD_WU, INT64_C(31),
                              true),
-             std::make_tuple(LoongArch::LD_B, LoongArch::BSTRPICK_W, LoongArch::LD_BU, int64_t(7),
+             std::make_tuple(LoongArch::LD_B, LoongArch::BSTRPICK_W, LoongArch::LD_BU, INT64_C(7),
                              false),
-             std::make_tuple(LoongArch::LD_H, LoongArch::BSTRPICK_W, LoongArch::LD_HU, int64_t(15),
+             std::make_tuple(LoongArch::LD_H, LoongArch::BSTRPICK_W, LoongArch::LD_HU, INT64_C(15),
                              false),
          }) {
         if (Needs64 && !LoongAS.is64())
