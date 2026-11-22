@@ -1484,6 +1484,32 @@ Base ISA plus the Zca `c.xor` form; the OP-32 arms (`subw`, the `*iw`/`*w` shift
 
 * <https://riscv-optimization-guide.riseproject.dev/#_make_effective_use_of_the_x0_register>
 
+### `ZeroConsumerRule` (`riscv:integer/zero-consumer`)
+
+```asm
+li Rd, 0
+# <instruction reading Rd through a source operand>
+# ->
+li Rd, 0
+# <instruction whose Rd operands are replaced with 'zero'>
+```
+
+#### Constraints
+
+Base ISA plus C.
+
+The producer may be any instruction whose operands prove a zero result, including the canonical `li`/`c.li` materializations.
+
+The consumer is any decoded instruction that reads `Rd` through at least one source operand; destination operands are never rewritten. `vsetvli`/`vsetivli`/`vsetvl` and the strided-memory family (`vlse`/`vsse`) are blacklisted: their `rs1`/`rs2` register numbers carry meaning instead of values — `rs1=zero` selects AVL ~0 (VLMAX) over the strip-mining register value, and the `x0` stride form relaxes the access-count mandate that `rs2!=zero` with `x[rs2]=0` keeps.
+
+Inputs outside the targeted ISA are undefined for this rule.
+
+#### Evidence
+
+* <https://riscv-optimization-guide.riseproject.dev/#_make_effective_use_of_the_x0_register>
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-6-2-avl-encoding>
+* <https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-7-5-vector-constant-stride-instructions>
+
 ### `AddressLoadRule` (`riscv:memory/address-load`)
 
 ```asm

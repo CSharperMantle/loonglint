@@ -32,6 +32,7 @@
 #include "loonglint/Rules/RISCV/ShiftAddRule.hpp"
 #include "loonglint/Rules/RISCV/ShiftChainRule.hpp"
 #include "loonglint/Rules/RISCV/ShiftMaskRule.hpp"
+#include "loonglint/Rules/RISCV/ZeroConsumerRule.hpp"
 #include "loonglint/Rules/RISCV/ZextHElimRule.hpp"
 #include "loonglint/Rules/RISCV/ZextHFormRule.hpp"
 #include "loonglint/Rules/RISCV/ZextWElimRule.hpp"
@@ -139,6 +140,7 @@ SmallVector<std::unique_ptr<Rule>, 0> RISCVSpec::createRules() const {
     Rules.emplace_back(std::make_unique<RISCV::NegRule>());
     Rules.emplace_back(std::make_unique<RISCV::ReservedHintRule>());
     Rules.emplace_back(std::make_unique<RISCV::ForeignZeroingIdiomRule>());
+    Rules.emplace_back(std::make_unique<RISCV::ZeroConsumerRule>());
     Rules.emplace_back(std::make_unique<RISCV::AddressLoadRule>(*this));
     Rules.emplace_back(std::make_unique<RISCV::LoadZextRule>());
     Rules.emplace_back(std::make_unique<RISCV::BranchToNextRule>());

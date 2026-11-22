@@ -119,6 +119,7 @@ set(LOONGLINT_RISCV_SOURCES
   src/Rules/RISCV/ShiftAddRule.cpp
   src/Rules/RISCV/ShiftChainRule.cpp
   src/Rules/RISCV/ShiftMaskRule.cpp
+  src/Rules/RISCV/ZeroConsumerRule.cpp
   src/Rules/RISCV/ZextHElimRule.cpp
   src/Rules/RISCV/ZextHFormRule.cpp
   src/Rules/RISCV/ZextWElimRule.cpp
