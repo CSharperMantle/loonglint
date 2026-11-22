@@ -10,6 +10,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrAnalysis.h"
+#include "llvm/MC/MCRegisterInfo.h"
 
 #include <optional>
 
@@ -21,8 +22,9 @@ class Rule {
       public:
         const llvm::MCInstrAnalysis &MIA;
         const llvm::MCInstrInfo &MII;
+        const llvm::MCRegisterInfo &MRI;
 
-        explicit Context(const DisassemblerTarget &DT) : MIA(*DT.MIA), MII(*DT.MII) {}
+        explicit Context(const DisassemblerTarget &DT) : MIA(*DT.MIA), MII(*DT.MII), MRI(*DT.MRI) {}
     };
 
     struct Match {
