@@ -87,6 +87,7 @@ set(LOONGLINT_LOONGARCH_SOURCES
   src/Rules/LoongArch/ZeroExtendRule.cpp
 )
 set(LOONGLINT_RISCV_SOURCES
+  src/RISCV/RISCVInstr.cpp
   src/RISCV/RISCVSpec.cpp
   src/Rules/RISCV/AddiPairRule.cpp
   src/Rules/RISCV/AddressLoadRule.cpp
