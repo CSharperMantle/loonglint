@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+m,+a,+f,+d,+c,+zba,+zbb,+zbs -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: not loonglint --input-format=raw --arch=rv64gc_zba_zbb_zbs %t.bin | FileCheck %s
+# RUN: not loonglint --filter '^riscv:integer/zext-w-elim$' --input-format=raw --arch=rv64gc_zba_zbb_zbs %t.bin | FileCheck %s
 
 # CHECK-COUNT-5: [riscv:integer/zext-w-elim]
 # CHECK: 5 finding(s)

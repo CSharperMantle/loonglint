@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:memory/address-load$' %t.exe | FileCheck %s
 
 # CHECK: ld.b $t0, $a0, 24
 # CHECK: ld.h $t1, $a1, 24

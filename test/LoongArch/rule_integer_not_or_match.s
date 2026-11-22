@@ -3,11 +3,11 @@
 
 # RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.32.o
 # RUN: ld.lld --entry=_start %t.32.o -o %t.32.exe
-# RUN: not loonglint %t.32.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/not-or$' %t.32.exe | FileCheck %s
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.64.o
 # RUN: ld.lld --entry=_start %t.64.o -o %t.64.exe
-# RUN: not loonglint %t.64.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/not-or$' %t.64.exe | FileCheck %s
 
 ## Covers both OR operand orders and both NOR $zero operand orders.
 # CHECK-COUNT-4: [loongarch:integer/not-or]

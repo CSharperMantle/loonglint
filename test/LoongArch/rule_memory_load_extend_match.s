@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:memory/load-extend$' %t.exe | FileCheck %s
 
 ## Covers LD.B+EXT.W.B, LD.H+EXT.W.H, LD.W+{ADDI.W,SLLI.W}, and
 ## LDPTR.W+{ADDI.W,SLLI.W} rd,rd,0.

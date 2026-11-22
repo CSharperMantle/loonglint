@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:memory/indexed-load$' %t.exe | FileCheck %s
 
 ## Covers B/H/W/D/BU/HU/WU widths.
 # CHECK-COUNT-7: [loongarch:memory/indexed-load]

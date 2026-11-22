@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/shift-add-alsl-d$' %t.exe | FileCheck %s
 
 # CHECK: {{.*}}: fuse shift and add into ALSL.D [loongarch:integer/shift-add-alsl-d]
 # CHECK-NEXT: {{.*}}slli.d{{.*}}$t0, $a0, 1

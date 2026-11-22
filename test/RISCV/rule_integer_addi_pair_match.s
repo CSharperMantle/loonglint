@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+c -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: not loonglint --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
+# RUN: not loonglint --filter '^riscv:integer/addi-pair$' --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
 
 # CHECK-COUNT-5: [riscv:integer/addi-pair]
 # CHECK: 5 finding(s)

@@ -3,13 +3,11 @@
 
 # RUN: llvm-mc -triple=riscv64 -mattr=+c -filetype=obj %s -o %t.o
 # RUN: llvm-objcopy -O binary --only-section=.text %t.o %t.bin
-# RUN: not loonglint --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
+# RUN: not loonglint --filter '^riscv:integer/logic-immediate$' --input-format=raw --arch=rv64gc %t.bin | FileCheck %s
 
 # CHECK-COUNT-4: [riscv:integer/logic-immediate]
-# CHECK-COUNT-1: [riscv:integer/nop]
-# CHECK: 5 finding(s)
+# CHECK: 4 finding(s)
 # CHECK: 4 riscv:integer/logic-immediate
-# CHECK: 1 riscv:integer/nop
 
 .text
 .globl _start

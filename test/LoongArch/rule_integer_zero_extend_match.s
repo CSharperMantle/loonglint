@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/zero-extend$' %t.exe | FileCheck %s
 
 ## Byte, halfword, and word zero-extension.
 # CHECK-COUNT-3: [loongarch:integer/zero-extend]

@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/addi-pair$' %t.exe | FileCheck %s
 
 ## Covers .W and .D with positive and negative immediates.
 # CHECK-COUNT-3: [loongarch:integer/addi-pair]

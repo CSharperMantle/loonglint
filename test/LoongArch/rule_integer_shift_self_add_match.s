@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/shift-self-add$' %t.exe | FileCheck %s
 
 ## Covers both operand orders and .W/.D widths.
 # CHECK-COUNT-4: [loongarch:integer/shift-self-add]

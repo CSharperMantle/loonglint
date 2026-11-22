@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch32-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/nop-la32$' %t.exe | FileCheck %s
 
 # CHECK-COUNT-7: [loongarch:integer/nop-la32]
 # CHECK: 7 finding(s)

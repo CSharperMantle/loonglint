@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/shift-chain$' %t.exe | FileCheck %s
 
 ## Includes an arithmetic-shift pair whose combined amount clamps to 63.
 # CHECK-COUNT-4: [loongarch:integer/shift-chain]

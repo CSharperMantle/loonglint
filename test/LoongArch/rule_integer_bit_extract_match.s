@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/bit-extract$' %t.exe | FileCheck %s
 
 ## Covers SRLI/SRAI in .W and .D with contiguous low masks (shift-first),
 ## plus the mask-first order (ANDI then SRLI).

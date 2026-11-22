@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:memory/unsigned-load-pick$' %t.exe | FileCheck %s
 
 ## Covers LD.{BU,HU,WU} and LDX.{BU,HU,WU} followed by the matching BSTRPICK.D.
 # CHECK-COUNT-6: [loongarch:memory/unsigned-load-pick]

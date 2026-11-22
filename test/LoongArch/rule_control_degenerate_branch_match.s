@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:control/degenerate-branch$' %t.exe | FileCheck %s
 
 ## Always-true forms collapse to `B`; always-false forms are deleted.
 # CHECK-COUNT-6: [loongarch:control/degenerate-branch]

@@ -3,11 +3,11 @@
 
 # RUN: llvm-mc -triple=riscv32-unknown-elf -mattr=+c -filetype=obj %s -o %t.32.o
 # RUN: ld.lld --entry=_start %t.32.o -o %t.32.exe
-# RUN: not loonglint %t.32.exe | FileCheck %s
+# RUN: not loonglint --filter '^riscv:integer/foreign-zeroing-idiom$' %t.32.exe | FileCheck %s
 
 # RUN: llvm-mc -triple=riscv64-unknown-elf -mattr=+c -filetype=obj %s -o %t.64.o
 # RUN: ld.lld --entry=_start %t.64.o -o %t.64.exe
-# RUN: not loonglint %t.64.exe | FileCheck %s
+# RUN: not loonglint --filter '^riscv:integer/foreign-zeroing-idiom$' %t.64.exe | FileCheck %s
 
 # CHECK-COUNT-24: [riscv:integer/foreign-zeroing-idiom]
 # CHECK: 24 finding(s)

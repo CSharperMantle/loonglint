@@ -3,7 +3,7 @@
 
 # RUN: llvm-mc -triple=loongarch64-unknown-linux -filetype=obj %s -o %t.o
 # RUN: ld.lld --entry=_start %t.o -o %t.exe
-# RUN: not loonglint %t.exe | FileCheck %s
+# RUN: not loonglint --filter '^loongarch:integer/shift-mask$' %t.exe | FileCheck %s
 
 ## Covers SLL/SRL/SRA/ROTR in .W and .D, superset count masks, and the
 ## LA64 BSTRPICK.D count-mask form.
