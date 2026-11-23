@@ -4,11 +4,11 @@
   <img src="assets/icon/loonglint.svg" alt="LoongLint logo" width="256px">
 </p>
 
-LoongLint (also stylized as "loonglint" and "LOONGLINT" in the source code) checks [LoongArch](https://docs.kernel.org/arch/loongarch/introduction.html) binaries for common optimizable peephole patterns.
+LoongLint (also stylized as "loonglint" and "LOONGLINT" in the source code) checks [LoongArch](https://docs.kernel.org/arch/loongarch/introduction.html) and [RISC-V](https://docs.riscv.org/reference/isa/unpriv/unpriv-index.html) binaries for common optimizable peephole patterns. Thanks to LLVM's analysis facilities, it can be generalized to any architectures LLVM supports.
 
 ## Design
 
-This is a peephole linter for LoongArch{32S,64} ELF and raw binaries. It scans the input binary, linearly, for pre-defined patterns that are often optimizable. For example, the following two-instruction sequences can be fused into one:
+This is a peephole linter for LoongArch{32S,64} and RV{32,64} ELF and raw binaries. It scans the input binary, linearly, for pre-defined patterns that are often optimizable. For example, the following two-instruction sequences can be fused into one:
 
 ```asm
 addi.d $t0, $t0, 8
@@ -35,6 +35,12 @@ The following is a list of optimization opportunities found with the help of Loo
 * [Bug 2066686](https://bugzil.la/2066686): Fuse or32+not32 into NOR in EmitInitDependentStringBase
 * [Bug 2067472](https://bugzil.la/2067472): Refactor to use a more idiomatic `move`-ing pattern
 * [Bug 2067473](https://bugzil.la/2067473): Optimize BaseIndex-shaped ma_{load,store} with offset == 0 and scale == 1
+* [Bug 2070770](https://bugzil.la/2070770): Use elidable moves more in word-sized arithmetic when applicable
+* [Bug 2070557](https://bugzil.la/2070557): (RISC-V) Elide redundant no-op `mv`-like instructions when applicable
+
+### [V8](https://v8.dev/)
+
+* [Change 8680418](https://crrev.com/c/v8/v8/+/8680418): Return early on empty DoubleRegisterList in {Push,Pop}All
 
 ## Installation
 
