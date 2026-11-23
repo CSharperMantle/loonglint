@@ -18,6 +18,23 @@ namespace loonglint::RISCV {
 
 namespace RISCV = ::llvm::RISCV;
 
+// Reject if zero might have special meanings.
+static constexpr auto OpcodeBlacklist = {
+    // https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-6-2-avl-encoding
+    RISCV::VSETVLI,
+    RISCV::VSETIVLI,
+    RISCV::VSETVL,
+    // https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-7-5-vector-constant-stride-instructions
+    RISCV::VLSE8_V,
+    RISCV::VLSE16_V,
+    RISCV::VLSE32_V,
+    RISCV::VLSE64_V,
+    RISCV::VSSE8_V,
+    RISCV::VSSE16_V,
+    RISCV::VSSE32_V,
+    RISCV::VSSE64_V,
+};
+
 StringRef ZeroConsumerRule::getID() const {
     return "riscv:integer/zero-consumer";
 }
@@ -45,24 +62,7 @@ std::optional<Rule::Match> ZeroConsumerRule::match(ArrayRef<Instruction> Instruc
         return std::nullopt;
     const MCRegister Rd = *ZeroRd;
 
-    // Reject if zero might have special meanings.
-    if (is_contained(
-            {
-                // https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-6-2-avl-encoding
-                RISCV::VSETVLI,
-                RISCV::VSETIVLI,
-                RISCV::VSETVL,
-                // https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-7-5-vector-constant-stride-instructions
-                RISCV::VLSE8_V,
-                RISCV::VLSE16_V,
-                RISCV::VLSE32_V,
-                RISCV::VLSE64_V,
-                RISCV::VSSE8_V,
-                RISCV::VSSE16_V,
-                RISCV::VSSE32_V,
-                RISCV::VSSE64_V,
-            },
-            S.getOpcode()))
+    if (is_contained(OpcodeBlacklist, S.getOpcode()))
         return std::nullopt;
 
     const MCInstrDesc &MID = Ctx.MII.get(S.getOpcode());

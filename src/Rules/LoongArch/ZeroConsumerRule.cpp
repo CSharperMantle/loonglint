@@ -18,6 +18,33 @@ namespace loonglint::LoongArch {
 
 namespace LoongArch = ::llvm::LoongArch;
 
+// Reject if the register number itself has constraints.
+static constexpr auto OpcodeBlacklist = {
+    // For the AM* families:
+    // - rd==rj -> INE
+    // - rd==rk -> Unspecified behavior
+    // Thus we cannot arbitrarily change the register encoding.
+    // https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html#atomic-memory-access-instructions
+    LoongArch::AMSWAP_B,     LoongArch::AMSWAP_H,     LoongArch::AMSWAP_W,
+    LoongArch::AMSWAP_D,     LoongArch::AMADD_B,      LoongArch::AMADD_H,
+    LoongArch::AMADD_W,      LoongArch::AMADD_D,      LoongArch::AMAND_W,
+    LoongArch::AMAND_D,      LoongArch::AMOR_W,       LoongArch::AMOR_D,
+    LoongArch::AMXOR_W,      LoongArch::AMXOR_D,      LoongArch::AMMAX_W,
+    LoongArch::AMMAX_D,      LoongArch::AMMIN_W,      LoongArch::AMMIN_D,
+    LoongArch::AMMAX_WU,     LoongArch::AMMAX_DU,     LoongArch::AMMIN_WU,
+    LoongArch::AMMIN_DU,     LoongArch::AMSWAP__DB_B, LoongArch::AMSWAP__DB_H,
+    LoongArch::AMSWAP__DB_W, LoongArch::AMSWAP__DB_D, LoongArch::AMADD__DB_B,
+    LoongArch::AMADD__DB_H,  LoongArch::AMADD__DB_W,  LoongArch::AMADD__DB_D,
+    LoongArch::AMAND__DB_W,  LoongArch::AMAND__DB_D,  LoongArch::AMOR__DB_W,
+    LoongArch::AMOR__DB_D,   LoongArch::AMXOR__DB_W,  LoongArch::AMXOR__DB_D,
+    LoongArch::AMMAX__DB_W,  LoongArch::AMMAX__DB_D,  LoongArch::AMMIN__DB_W,
+    LoongArch::AMMIN__DB_D,  LoongArch::AMMAX__DB_WU, LoongArch::AMMAX__DB_DU,
+    LoongArch::AMMIN__DB_WU, LoongArch::AMMIN__DB_DU, LoongArch::AMCAS_B,
+    LoongArch::AMCAS_H,      LoongArch::AMCAS_W,      LoongArch::AMCAS_D,
+    LoongArch::AMCAS__DB_B,  LoongArch::AMCAS__DB_H,  LoongArch::AMCAS__DB_W,
+    LoongArch::AMCAS__DB_D,
+};
+
 StringRef ZeroConsumerRule::getID() const {
     return "loongarch:integer/zero-consumer";
 }
@@ -42,33 +69,7 @@ std::optional<Rule::Match> ZeroConsumerRule::match(ArrayRef<Instruction> Instruc
         return std::nullopt;
     const MCRegister Rd = *ZeroRd;
 
-    // Reject if the register number itself carries meaning. For the AM*
-    // families an equal rd and rj raises an invalid-instruction exception and
-    // an equal rd and rk returns an undefined result, so preserving it.
-    // https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html#atomic-memory-access-instructions
-    if (is_contained(
-            {
-                LoongArch::AMSWAP_B,     LoongArch::AMSWAP_H,     LoongArch::AMSWAP_W,
-                LoongArch::AMSWAP_D,     LoongArch::AMADD_B,      LoongArch::AMADD_H,
-                LoongArch::AMADD_W,      LoongArch::AMADD_D,      LoongArch::AMAND_W,
-                LoongArch::AMAND_D,      LoongArch::AMOR_W,       LoongArch::AMOR_D,
-                LoongArch::AMXOR_W,      LoongArch::AMXOR_D,      LoongArch::AMMAX_W,
-                LoongArch::AMMAX_D,      LoongArch::AMMIN_W,      LoongArch::AMMIN_D,
-                LoongArch::AMMAX_WU,     LoongArch::AMMAX_DU,     LoongArch::AMMIN_WU,
-                LoongArch::AMMIN_DU,     LoongArch::AMSWAP__DB_B, LoongArch::AMSWAP__DB_H,
-                LoongArch::AMSWAP__DB_W, LoongArch::AMSWAP__DB_D, LoongArch::AMADD__DB_B,
-                LoongArch::AMADD__DB_H,  LoongArch::AMADD__DB_W,  LoongArch::AMADD__DB_D,
-                LoongArch::AMAND__DB_W,  LoongArch::AMAND__DB_D,  LoongArch::AMOR__DB_W,
-                LoongArch::AMOR__DB_D,   LoongArch::AMXOR__DB_W,  LoongArch::AMXOR__DB_D,
-                LoongArch::AMMAX__DB_W,  LoongArch::AMMAX__DB_D,  LoongArch::AMMIN__DB_W,
-                LoongArch::AMMIN__DB_D,  LoongArch::AMMAX__DB_WU, LoongArch::AMMAX__DB_DU,
-                LoongArch::AMMIN__DB_WU, LoongArch::AMMIN__DB_DU, LoongArch::AMCAS_B,
-                LoongArch::AMCAS_H,      LoongArch::AMCAS_W,      LoongArch::AMCAS_D,
-                LoongArch::AMCAS__DB_B,  LoongArch::AMCAS__DB_H,  LoongArch::AMCAS__DB_W,
-                LoongArch::AMCAS__DB_D,
-            },
-            S.getOpcode()) &&
-        S.getOperand(0).getReg() == Rd)
+    if (is_contained(OpcodeBlacklist, S.getOpcode()))
         return std::nullopt;
 
     const MCInstrDesc &MID = Ctx.MII.get(S.getOpcode());
