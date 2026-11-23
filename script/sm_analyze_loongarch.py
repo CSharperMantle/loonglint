@@ -7,8 +7,8 @@ import typer
 
 # Rules fully forced (N/A): branch relaxation artifacts.
 FORCED = {
-    "control/degenerate-branch": "branch relaxation",
-    "control/branch-to-next": "branch relaxation",
+    "loongarch:control/degenerate-branch": "branch relaxation",
+    "loongarch:control/branch-to-next": "branch relaxation",
 }
 # NOP-shaped rules whose findings may be ma_liPatchable low-12-bit slots.
 NOP_RULES = {"loongarch:integer/nop", "loongarch:integer/nop-la32", "loongarch:integer/nop-la64"}
@@ -19,7 +19,7 @@ RE_FINDING_ABS = re.compile(r"^(.+?):(?P<label>.+?):(?P<abs>0x[0-9a-f]+): .+ \[(
 RE_FINDING_BARE = re.compile(r"^(.+?):(?P<label>.+): .+ \[(?P<rule>[^\]]+)\]$")
 
 # Removed-instruction line inside a finding block.
-RE_REMOVED = re.compile(r"^\t- 0x[0-9a-f]+\t(\S+)(?:\t(.*))?$")
+RE_REMOVED = re.compile(r"^\t- 0x[0-9a-f]+\t(?:\s+\t)?(\S+)(?:\t(.*))?$")
 
 
 def is_li_slot(mnemonic: str | None, operands: str | None) -> bool:
