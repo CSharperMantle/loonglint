@@ -18,3 +18,10 @@ _start:
   add.w $t8, $a1, $a2
   ori $a0, $zero, 0
   lu32i.d $a0, 8
+  li.d $t1, 42
+  li.d $t0, 0
+1:
+  bgeu $t0, $t1, 2f
+  addi.d $t0, $t0, 1
+  b 1b
+2:
