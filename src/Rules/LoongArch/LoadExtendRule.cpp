@@ -22,7 +22,7 @@ StringRef LoadExtendRule::getID() const {
 }
 
 StringRef LoadExtendRule::getDescription() const {
-    return "delete redundant load sign extension";
+    return "delete redundant sign extension after a sign-extending load";
 }
 
 unsigned LoadExtendRule::getInstructionCount() const {

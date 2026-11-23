@@ -25,7 +25,7 @@ StringRef LoadZeroExtendRule::getID() const {
 }
 
 StringRef LoadZeroExtendRule::getDescription() const {
-    return "fold load and zero-extract into unsigned load";
+    return "replace load and extraction with zero-extending load";
 }
 
 unsigned LoadZeroExtendRule::getInstructionCount() const {
