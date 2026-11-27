@@ -39,7 +39,7 @@ struct ArchQuery {
 
 class ArchSpec {
   public:
-    virtual ~ArchSpec() = default;
+    virtual ~ArchSpec();
 
     virtual llvm::StringRef getName() const = 0;
     virtual unsigned getCellSize() const = 0;

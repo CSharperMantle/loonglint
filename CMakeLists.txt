@@ -50,9 +50,11 @@ if(LOONGLINT_ENABLE_CLANG_TIDY)
 endif()
 
 set(LOONGLINT_ENGINE_SOURCES
+  src/ArchSpec.cpp
   src/DisassemblerTarget.cpp
   src/FunctionSymbols.cpp
   src/InstDiff.cpp
+  src/Rule.cpp
   src/RuleFilter.cpp
   src/RuleManager.cpp
   src/ScannedRegion.cpp

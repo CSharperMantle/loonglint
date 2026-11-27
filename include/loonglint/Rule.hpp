@@ -31,7 +31,7 @@ class Rule {
         llvm::SmallVector<llvm::MCInst, 0> Replacement;
     };
 
-    virtual ~Rule() = default;
+    virtual ~Rule();
 
     virtual llvm::StringRef getID() const = 0;
     virtual llvm::StringRef getDescription() const = 0;
