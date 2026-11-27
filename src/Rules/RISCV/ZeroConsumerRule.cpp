@@ -19,7 +19,7 @@ namespace loonglint::RISCV {
 namespace RISCV = ::llvm::RISCV;
 
 // Reject if zero might have special meanings.
-static constexpr auto OpcodeBlacklist = {
+static constexpr unsigned OpcodeBlacklist[] = {
     // https://docs.riscv.org/reference/isa/v20260120/unpriv/v-st-ext.html#30-1-6-2-avl-encoding
     RISCV::VSETVLI,
     RISCV::VSETIVLI,

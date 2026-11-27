@@ -19,7 +19,7 @@ namespace loonglint::LoongArch {
 namespace LoongArch = ::llvm::LoongArch;
 
 // Reject if the register number itself has constraints.
-static constexpr auto OpcodeBlacklist = {
+static constexpr unsigned OpcodeBlacklist[] = {
     // For the AM* families:
     // - rd==rj -> INE
     // - rd==rk -> Unspecified behavior
