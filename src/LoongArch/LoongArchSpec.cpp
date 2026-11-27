@@ -43,11 +43,7 @@ namespace loonglint {
 
 namespace LoongArch {
 
-namespace {
-
-template <class... T> constexpr bool AlwaysFalse = false;
-
-} // namespace
+template <class... T> static constexpr bool AlwaysFalse = false;
 
 LoongArchSpec::LoongArchSpec(bool Is64) : Is64(Is64) {}
 

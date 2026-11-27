@@ -56,11 +56,7 @@ namespace loonglint {
 
 namespace RISCV {
 
-namespace {
-
-template <class... T> constexpr bool AlwaysFalse = false;
-
-} // namespace
+template <class... T> static constexpr bool AlwaysFalse = false;
 
 RISCVSpec::RISCVSpec(unsigned XLen, std::string FeaturesString)
     : XLen(XLen), FeaturesString(std::move(FeaturesString)) {}

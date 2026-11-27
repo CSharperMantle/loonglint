@@ -18,8 +18,6 @@ namespace loonglint::RISCV {
 
 namespace RISCV = ::llvm::RISCV;
 
-namespace {
-
 // First-instruction forms keyed by opcode. |BaseOp| is the uncompressed
 // replacement opcode, |CompressedOp| the compressed continuation accepting the
 // same direction, and |Arithmetic| selects the saturating right-shift fold.
@@ -31,7 +29,7 @@ struct ShiftForm {
     bool Arithmetic;
 };
 
-constexpr ShiftForm Forms[] = {
+static constexpr ShiftForm Forms[] = {
     {RISCV::SLLI, RISCV::SLLI, RISCV::C_SLLI, false, false},
     {RISCV::C_SLLI, RISCV::SLLI, RISCV::C_SLLI, true, false},
     {RISCV::SRLI, RISCV::SRLI, RISCV::C_SRLI, false, false},
@@ -39,8 +37,6 @@ constexpr ShiftForm Forms[] = {
     {RISCV::SRAI, RISCV::SRAI, RISCV::C_SRAI, false, true},
     {RISCV::C_SRAI, RISCV::SRAI, RISCV::C_SRAI, true, true},
 };
-
-} // namespace
 
 ShiftChainRule::ShiftChainRule(const RISCVSpec &RISCVAS) : RISCVAS(RISCVAS) {}
 
